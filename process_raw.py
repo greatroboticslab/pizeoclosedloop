@@ -279,7 +279,7 @@ class ProcessRawFrame(ttk.Frame):
         ttk.Entry(self, textvariable=self.zoom_points, width=10).grid(row=row, column=1, sticky="w", pady=(6, 0))
 
         row += 1
-        self.run_btn = ttk.Button(self, text="Run", bootstyle=SUCCESS, command=self._run)
+        self.run_btn = tb.Button(self, text="Run", bootstyle=SUCCESS, command=self._run)
         self.run_btn.grid(row=row, column=0, sticky="w", pady=(12, 0))
 
         self.pb = ttk.Progressbar(self, mode="determinate")

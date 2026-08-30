@@ -8,6 +8,7 @@
 # - Displays latest displacement; ready to be extended with graphs
 
 import os
+import re
 import sys
 import subprocess
 import socket
@@ -66,7 +67,10 @@ CORRECTION_NM = 0.0          # Should match CurrentValueCorrection (primary axis
 
 MQTT_BROKER_HOST = "localhost"
 MQTT_PORT = 1883
-MQTT_TOPIC = "vb_to_py"       # VB publishes "refCount,D,phaseRaw" here
+MQTT_TOPIC = "vb_to_py"       # VB publishes "D:<raw> N:<index>" here
+
+# Payload emitted by uMD_GUI's MainForm.vb: `"D:" & D & " N:" & N`
+_DN_RE = re.compile(r"^\s*D:\s*(-?\d+)\s+N:\s*(-?\d+)\s*$")
 
 MAX_POINTS = 5000             # Points to keep in buffer for plotting
 UI_UPDATE_MS = 50             # UI refresh interval (~20 fps)
@@ -229,7 +233,7 @@ class DisplayFrame(ttk.Frame):
         ).pack(anchor="w", pady=(0, 10))
 
         self.status_var = tk.StringVar(value="Status: Not Running")
-        ttk.Label(
+        tb.Label(
             tool_frame,
             textvariable=self.status_var,
             bootstyle="inverse-secondary",
@@ -237,7 +241,7 @@ class DisplayFrame(ttk.Frame):
 
         # Latest displacement
         self.disp_var = tk.StringVar(value="Latest displacement: --- nm")
-        ttk.Label(
+        tb.Label(
             tool_frame,
             textvariable=self.disp_var,
             bootstyle="inverse-info",
@@ -253,14 +257,14 @@ class DisplayFrame(ttk.Frame):
         btn_frame = ttk.Frame(tool_frame)
         btn_frame.pack(anchor="w", pady=(10, 0))
 
-        ttk.Button(
+        tb.Button(
             btn_frame,
             text="Launch uMD GUI",
             bootstyle="success",
             command=self._launch_app,
         ).pack(side="left", padx=(0, 10))
 
-        ttk.Button(
+        tb.Button(
             btn_frame,
             text="Force Close",
             bootstyle="danger",
@@ -336,6 +340,25 @@ class DisplayFrame(ttk.Frame):
                 except Exception:
                     nm = None
 
+        # "D:<raw> N:<index>" — what uMD_GUI actually publishes. It builds this
+        # string in MainForm.vb (`"D:" & D & " N:" & N`), reusing the exact
+        # capture-log format, so it has neither commas nor a bare number and
+        # matches neither branch above.
+        if nm is None:
+            m = _DN_RE.match(text)
+            if m is not None:
+                try:
+                    d_counts = int(m.group(1))
+                    ref_count = int(m.group(2))
+                    nm = raw_to_nm(
+                        float(d_counts),
+                        wavelength=WAVELENGTH_NM,
+                        correction=CORRECTION_NM,
+                    )
+                    self.last_source = "dn"
+                except Exception:
+                    nm = None
+
         # Fallback: single float (already a displacement value)
         if nm is None:
             try:
@@ -363,6 +386,8 @@ class DisplayFrame(ttk.Frame):
         if hasattr(self, "raw_var"):
             if self.last_source == "csv" and self.last_ref_count is not None:
                 self.raw_var.set(f"Parsed: refCount={self.last_ref_count}, D={self.last_d_counts}, phaseRaw={self.last_phase_raw}")
+            elif self.last_source == "dn":
+                self.raw_var.set(f"Parsed: D={self.last_d_counts}, N={self.last_ref_count}")
             elif self.last_source == "float":
                 self.raw_var.set("Parsed: single float (treated as nm)")
             elif self.last_source == "bad":
@@ -434,6 +459,20 @@ class DisplayFrame(ttk.Frame):
                 messagebox.showerror("Error", f"Could not close process:\n{e}")
         else:
             self.status_var.set("Status: No process attached")
+
+    def read_latest(self):
+        """
+        Latest displacement sample as (timestamp, nm), or None if nothing has
+        been decoded yet.
+
+        The closed-loop controller uses this rather than `last_nm` because it
+        needs the timestamp: without it there is no way to tell a live stream
+        from a stalled one that is still holding its last value.
+        """
+        try:
+            return self.data_buffer[-1]
+        except IndexError:
+            return None
 
     def is_mqtt_connected(self) -> bool:
         return self.last_payload is not None

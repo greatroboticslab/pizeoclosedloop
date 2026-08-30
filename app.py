@@ -9,6 +9,7 @@ from process_raw import ProcessRawFrame
 from moku_waveform import MokuWaveformFrame
 from display import DisplayFrame
 from record_data import RecordDataFrame
+from closed_loop import ClosedLoopFrame
 
 import os
 import sys
@@ -78,7 +79,21 @@ def main():
     display_tab = DisplayFrame(nb)       
     nb.add(display_tab, text="uMD GUI")  
 
+    # record data
+    record_tab = RecordDataFrame(nb, moku_tab=moku_tab, display_tab=display_tab)
+    nb.add(record_tab, text="Record Data")
+
+    # Software displacement closed loop (Software PID / Preview + ADRC)
+    control_tab = ClosedLoopFrame(nb, moku_tab=moku_tab, display_tab=display_tab)
+    nb.add(control_tab, text="Closed-Loop Control")
+
     def on_close():
+        # Stop the control loop and zero the output before anything else, so a
+        # running loop can never outlive the window that owns its Stop button.
+        try:
+            control_tab.shutdown()
+        except Exception:
+            pass
         try:
             display_tab.shutdown()
         except Exception:
@@ -86,10 +101,6 @@ def main():
         app.destroy()
 
     app.protocol("WM_DELETE_WINDOW", on_close)
-
-    # record data
-    record_tab = RecordDataFrame(nb, moku_tab=moku_tab, display_tab=display_tab)
-    nb.add(record_tab, text="Record Data")
 
     # Existing raw processing tab
     process_tab = ProcessRawFrame(nb)

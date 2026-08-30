@@ -93,6 +93,10 @@ class MokuWaveformFrame(ttk.Frame):
         self._pid = None
         self._pid_active = False
 
+        # True while the Python closed-loop controller owns Output 1.
+        self._software_control = False
+        self._software_locked_widgets = []
+
         # Legacy compat for existing code paths
         self._instrument = None
 
@@ -239,7 +243,7 @@ class MokuWaveformFrame(ttk.Frame):
             font=("Segoe UI", 13, "bold"),
         ).grid(row=0, column=0, columnspan=4, sticky="w", pady=(0, 8))
 
-        setup_frame = ttk.LabelFrame(
+        setup_frame = tb.Labelframe(
             self, text="Moku CLI / API not ready", padding=12, bootstyle=SECONDARY
         )
         setup_frame.grid(row=1, column=0, columnspan=4, sticky="nsew")
@@ -307,7 +311,7 @@ class MokuWaveformFrame(ttk.Frame):
         btn_row = ttk.Frame(setup_frame)
         btn_row.grid(row=3, column=0, columnspan=4, sticky="w", pady=(4, 0))
 
-        ttk.Button(btn_row, text="Verify Moku setup", bootstyle=PRIMARY, command=self._on_verify_clicked).pack(side="left")
+        tb.Button(btn_row, text="Verify Moku setup", bootstyle=PRIMARY, command=self._on_verify_clicked).pack(side="left")
 
         ttk.Label(
             setup_frame,
@@ -356,11 +360,11 @@ class MokuWaveformFrame(ttk.Frame):
 
         ttk.Label(conn_frame, text="Moku:Go IP:").grid(row=0, column=0, sticky="e", padx=(0, 5))
         ttk.Entry(conn_frame, textvariable=self.ip_var, width=20).grid(row=0, column=1, sticky="ew")
-        ttk.Button(conn_frame, text="Connect", bootstyle=SUCCESS, command=self._connect).grid(row=0, column=2, padx=(8, 0))
-        ttk.Button(conn_frame, text="Disconnect", bootstyle=DANGER, command=self._disconnect).grid(row=0, column=3, padx=(4, 0))
+        tb.Button(conn_frame, text="Connect", bootstyle=SUCCESS, command=self._connect).grid(row=0, column=2, padx=(8, 0))
+        tb.Button(conn_frame, text="Disconnect", bootstyle=DANGER, command=self._disconnect).grid(row=0, column=3, padx=(4, 0))
         ttk.Label(conn_frame, textvariable=self.status_var).grid(row=1, column=0, columnspan=4, sticky="w", pady=(5, 0))
 
-        ttk.Button(conn_frame, text="Wi-Fi help", bootstyle=INFO, command=self._open_wifi_settings).grid(
+        tb.Button(conn_frame, text="Wi-Fi help", bootstyle=INFO, command=self._open_wifi_settings).grid(
             row=2, column=0, sticky="w", pady=(4, 0)
         )
         ttk.Label(
@@ -470,10 +474,12 @@ class MokuWaveformFrame(ttk.Frame):
         btn_frame.columnconfigure(0, weight=1)
         btn_frame.columnconfigure(1, weight=1)
 
-        ttk.Button(btn_frame, text="Apply Waveform", bootstyle=PRIMARY, command=self._apply_waveform).grid(
-            row=0, column=0, sticky="e", padx=(0, 5)
+        self._apply_wave_btn = tb.Button(
+            btn_frame, text="Apply Waveform", bootstyle=PRIMARY, command=self._apply_waveform
         )
-        ttk.Button(btn_frame, text="Stop Output", bootstyle=SECONDARY, command=self._stop_output).grid(
+        self._apply_wave_btn.grid(row=0, column=0, sticky="e", padx=(0, 5))
+
+        tb.Button(btn_frame, text="Stop Output", bootstyle=SECONDARY, command=self._stop_output).grid(
             row=0, column=1, sticky="w", padx=(5, 0)
         )
 
@@ -482,7 +488,7 @@ class MokuWaveformFrame(ttk.Frame):
         pid_frame.grid(row=4, column=0, columnspan=4, sticky="ew", pady=(10, 5))
         pid_frame.columnconfigure(1, weight=1)
 
-        self._pid_check = ttk.Checkbutton(
+        self._pid_check = tb.Checkbutton(
             pid_frame,
             text="Enable PID Smoothing",
             variable=self.pid_enabled_var,
@@ -523,7 +529,7 @@ class MokuWaveformFrame(ttk.Frame):
             )
 
         gain_row = 2 + len(pid_fields)
-        self._apply_gains_btn = ttk.Button(
+        self._apply_gains_btn = tb.Button(
             pid_frame,
             text="Apply Gains",
             bootstyle=SECONDARY,
@@ -535,6 +541,9 @@ class MokuWaveformFrame(ttk.Frame):
         ttk.Label(pid_frame, textvariable=self.pid_status_var, font=("Segoe UI", 8), foreground="teal").grid(
             row=gain_row, column=2, sticky="w", padx=(8, 0), pady=(8, 0)
         )
+
+        # Disabled while the software closed-loop controller drives Output 1.
+        self._software_locked_widgets = [self._apply_wave_btn, self._pid_check]
 
         self.rowconfigure(2, weight=1)
         self._on_type_changed()
@@ -594,6 +603,9 @@ class MokuWaveformFrame(ttk.Frame):
 
     def _disconnect(self, silent: bool = False):
         self._pid_active = False
+        if self._software_control:
+            self._software_control = False
+            self._set_widget_group_state(self._software_locked_widgets, True)
         self.pid_enabled_var.set(False)
         if self._mim is not None:
             try:
@@ -628,12 +640,62 @@ class MokuWaveformFrame(ttk.Frame):
         )
 
     # ==================================================================
+    # Software closed-loop control support
+    #
+    # The hardware PID above shapes the waveform generator's own output; it
+    # never sees the interferometer. Displacement feedback lives in Python
+    # (MQTT -> control.py -> set_dc_voltage below), so while a software loop
+    # owns Output 1 the waveform generator emits a commanded DC level and the
+    # hardware PID stays out of the path entirely.
+    # ==================================================================
+    def set_dc_voltage(self, voltage: float, channel: int = 1):
+        """Command a DC level on `channel`. Called every tick by the loop."""
+        if self._wg is None:
+            raise RuntimeError("Moku not connected")
+        self._wg.set_output(channel, "DC", dc_level=float(voltage))
+
+    def begin_software_control(self, channel: int = 1):
+        """Hand Output 1 to the software loop. Raises if not connected."""
+        if self._wg is None:
+            raise RuntimeError("Moku not connected")
+
+        if self._pid_active:
+            self._disable_pid()
+        self._set_routing_wg_direct()
+        self.set_dc_voltage(0.0, channel)
+
+        self._software_control = True
+        self._set_widget_group_state(self._software_locked_widgets, False)
+        self.pid_status_var.set("Software closed-loop control owns Output 1")
+
+    def end_software_control(self, channel: int = 1):
+        """Return Output 1 to manual control and zero it."""
+        self._software_control = False
+        try:
+            if self._wg is not None:
+                self.set_dc_voltage(0.0, channel)
+        except Exception:
+            pass
+        self._set_widget_group_state(self._software_locked_widgets, True)
+        self.pid_status_var.set("PID off — WG driving Output 1 directly")
+
+    # ==================================================================
     # PID toggle
     # ==================================================================
     def _on_pid_toggled(self):
         if self._wg is None:
             self.pid_enabled_var.set(False)
             messagebox.showwarning("Not connected", "Connect to Moku:Go first.")
+            return
+
+        if self._software_control:
+            # Both would drive Output 1; the software loop already holds it.
+            self.pid_enabled_var.set(False)
+            messagebox.showwarning(
+                "Closed-loop control active",
+                "Stop the software closed-loop controller before enabling the "
+                "hardware PID — both drive Output 1.",
+            )
             return
 
         want_pid = self.pid_enabled_var.get()
@@ -735,6 +797,10 @@ class MokuWaveformFrame(ttk.Frame):
     def _apply_waveform_config(self, config: dict):
         if self._wg is None:
             raise RuntimeError("Moku not connected")
+        if self._software_control:
+            raise RuntimeError(
+                "Software closed-loop control is driving Output 1; stop it first."
+            )
 
         cfg = self._validate_waveform_config(config)
         wave_type = cfg["type"]

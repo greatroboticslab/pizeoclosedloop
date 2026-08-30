@@ -6,7 +6,14 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[('moku_data', 'moku_data'), ('umd_gui', 'umd_gui'), ('broker_mqtt', 'broker_mqtt')],
-    hiddenimports=[],
+    hiddenimports=[
+        'scipy.linalg', 'scipy.optimize', 'scipy.special',
+        'scipy._lib.messagestream',
+        # closed_loop.py embeds a figure via FigureCanvasTkAgg. It never
+        # touches pyplot (process_raw.py pins the global backend to Agg),
+        # so PyInstaller cannot infer this backend from the imports.
+        'matplotlib.backends.backend_tkagg',
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
