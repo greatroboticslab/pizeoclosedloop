@@ -76,7 +76,7 @@ def main():
     nb.add(moku_tab, text=moku_tab_label)
 
     # for diplay
-    display_tab = DisplayFrame(nb)       
+    display_tab = DisplayFrame(nb)
     nb.add(display_tab, text="uMD GUI")  
 
     # record data

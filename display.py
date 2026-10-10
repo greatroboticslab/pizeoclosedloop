@@ -74,6 +74,7 @@ _DN_RE = re.compile(r"^\s*D:\s*(-?\d+)\s+N:\s*(-?\d+)\s*$")
 
 MAX_POINTS = 5000             # Points to keep in buffer for plotting
 UI_UPDATE_MS = 50             # UI refresh interval (~20 fps)
+RANGE_WINDOW_S = 10.0         # High/low displacement window shown on the uMD tab
 
 
 # -------------------------------------------------------------------
@@ -245,6 +246,14 @@ class DisplayFrame(ttk.Frame):
             tool_frame,
             textvariable=self.disp_var,
             bootstyle="inverse-info",
+        ).pack(anchor="w", pady=(0, 4))
+
+        self.range_var = tk.StringVar(value="Last 10 s: waiting for samples")
+        tb.Label(
+            tool_frame,
+            textvariable=self.range_var,
+            bootstyle="inverse-info",
+            justify="left",
         ).pack(anchor="w", pady=(0, 10))
         # MQTT debug/status (useful even when the app is packaged with console=False)
         self.payload_var = tk.StringVar(value="(waiting for MQTT...)" )
@@ -376,10 +385,30 @@ class DisplayFrame(ttk.Frame):
 
         # Keep a small rolling buffer for plotting/diagnostics
         self.data_buffer.append((time.time(), self.last_nm))
+
+    def _update_range_display(self):
+        """Show the highest and lowest displacement in the last 10 seconds."""
+        if not hasattr(self, "range_var"):
+            return
+        now = time.time()
+        samples = [nm for ts, nm in self.data_buffer if now - ts <= RANGE_WINDOW_S]
+        if len(samples) < 2:
+            self.range_var.set("Last 10 s: waiting for samples")
+            return
+        low = min(samples)
+        high = max(samples)
+        middle = 0.5 * (low + high)
+        half = 0.5 * (high - low)
+        self.range_var.set(
+            f"Last 10 s:  lowest {low:.1f} nm    highest {high:.1f} nm\n"
+            f"Middle {middle:.1f} nm    half-range {half:.1f} nm"
+        )
+
     def _start_ui_updates(self):
         """Periodic UI update; called in the Tk main thread."""
         if self.last_nm is not None:
             self.disp_var.set(f"Latest displacement: {self.last_nm:.3f} nm")
+        self._update_range_display()
         # Update MQTT debug labels (visible even in the packaged EXE)
         if hasattr(self, "payload_var"):
             self.payload_var.set(self.last_payload if self.last_payload else "(waiting for MQTT...)")

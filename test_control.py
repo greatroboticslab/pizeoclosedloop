@@ -25,6 +25,8 @@ from control import (
     TrajectoryGenerator,
     fit_fopdt_step,
     imc_tune,
+    lift_reference,
+    plant_fit_usable,
     simulate,
 )
 
@@ -460,6 +462,49 @@ def test_settings_write_is_atomic(tmp_path, monkeypatch):
     monkeypatch.setattr(os, "replace", real_replace)
 
     assert app_settings.load("t.json") == {"keep": 1}
+
+
+def test_plant_fit_rejects_an_unsettled_step():
+    """tau of several seconds is a fringe-count drift, not a piezo."""
+    assert plant_fit_usable(0.08, 0.01)
+    assert not plant_fit_usable(2.86, 0.416)
+    assert not plant_fit_usable(0.08, 0.5)
+
+
+def test_lift_reference_raises_a_wave_sitting_on_the_rest_position():
+    """A setpoint at or below the 0 V reading cannot be reached: voltage clips to 0."""
+    # Trough is 695 nm, rest is 705 nm, and the wave needs 25 nm of clearance.
+    assert lift_reference(700.0, 5.0, "Sine", 5.0, y_rest_nm=705.0) == pytest.approx(35.0)
+    # Already clear of the floor: 700 - 200 = 500, rest is 0.
+    assert lift_reference(700.0, 200.0, "Sine", 0.2, y_rest_nm=0.0) == 0.0
+
+
+def test_relative_sine_commands_voltage_above_a_nonzero_rest_reading():
+    """
+    Absolute nm used to cancel the feedforward: the model starts at 0 nm, the
+    observer subtracts the whole interferometer reading, and the command stays
+    at 0 V whenever the setpoint sits on that reading.
+    """
+    model = make_model()
+    dt = 0.05
+    y_rest = 705.0
+    shift = lift_reference(700.0, 200.0, "Sine", 0.2, y_rest)
+    traj = TrajectoryGenerator(
+        "Sine", amplitude_nm=200.0, frequency_hz=0.2, offset_nm=700.0 + shift,
+    )
+    ctrl = PreviewADRC(model, w0=47.25, dt=dt)
+    plant = SimulatedPlant(model)
+    plant.reset(dt)
+    y = 0.0
+    volts = []
+    for i in range(60):
+        t = i * dt
+        t_d, t_d1 = ctrl.preview_times(t)
+        v = ctrl.update(traj.r(t_d) - y_rest, traj.r(t_d1) - y_rest, y, dt)
+        _, y = plant.step(v, dt)
+        volts.append(v)
+
+    assert max(volts) > 0.2, max(volts)
 
 
 if __name__ == "__main__":

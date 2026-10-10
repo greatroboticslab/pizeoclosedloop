@@ -106,11 +106,12 @@ class MokuWaveformFrame(ttk.Frame):
 
         # ── Tk variables — waveform ──────────────────────────────────
         self.ip_var = tk.StringVar(value="192.168.73.1")
+        self.ip_file_var = tk.StringVar(value=r"C:\Users\plant\Desktop\laserai-5\moku_IP.txt")
         self.status_var = tk.StringVar(value="Not connected")
         self.channel_var = tk.IntVar(value=1)
         self.wave_type_var = tk.StringVar(value="Sine")
-        self.amplitude_var = tk.DoubleVar(value=1.0)
-        self.frequency_var = tk.DoubleVar(value=1000.0)
+        self.amplitude_var = tk.DoubleVar(value=5.0)
+        self.frequency_var = tk.DoubleVar(value=5.0)
         self.offset_var = tk.DoubleVar(value=0.0)
         self.phase_var = tk.DoubleVar(value=0.0)
 
@@ -347,14 +348,39 @@ class MokuWaveformFrame(ttk.Frame):
         for child in self.winfo_children():
             child.destroy()
 
+        # The waveform block must keep its own height. Giving that row a
+        # stretch weight makes Tk crush it when the feedforward and PID
+        # sections are also on screen, which hides every field under Type.
+        canvas = tk.Canvas(self, highlightthickness=0, borderwidth=0)
+        scroll = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=scroll.set)
+        scroll.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+        body = ttk.Frame(canvas)
+        window_id = canvas.create_window((0, 0), window=body, anchor="nw")
+
+        def _fit_scroll(_event=None):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+
+        def _fit_width(event):
+            canvas.itemconfigure(window_id, width=event.width)
+
+        def _on_wheel(event):
+            canvas.yview_scroll(int(-event.delta / 120), "units")
+
+        body.bind("<Configure>", _fit_scroll)
+        canvas.bind("<Configure>", _fit_width)
+        canvas.bind("<Enter>", lambda _e: canvas.bind_all("<MouseWheel>", _on_wheel))
+        canvas.bind("<Leave>", lambda _e: canvas.unbind_all("<MouseWheel>"))
+
         ttk.Label(
-            self,
+            body,
             text="Moku:Go Waveform Generator",
             font=("Segoe UI", 13, "bold"),
         ).grid(row=0, column=0, columnspan=4, sticky="w")
 
         # ── Connection frame ──────────────────────────────────────────
-        conn_frame = ttk.LabelFrame(self, text="Connection", padding=8)
+        conn_frame = ttk.LabelFrame(body, text="Connection", padding=8)
         conn_frame.grid(row=1, column=0, columnspan=4, sticky="ew", pady=(10, 5))
         conn_frame.columnconfigure(1, weight=1)
 
@@ -377,8 +403,16 @@ class MokuWaveformFrame(ttk.Frame):
             justify="left",
         ).grid(row=3, column=0, columnspan=4, sticky="w", pady=(2, 0))
 
+        ttk.Label(conn_frame, text="IP file:").grid(row=4, column=0, sticky="e", padx=(0, 5), pady=(8, 0))
+        ttk.Entry(conn_frame, textvariable=self.ip_file_var).grid(
+            row=4, column=1, sticky="ew", pady=(8, 0)
+        )
+        tb.Button(conn_frame, text="Grab IP", bootstyle=PRIMARY, command=self._grab_ip).grid(
+            row=4, column=2, padx=(8, 0), pady=(8, 0)
+        )
+
         # ── Waveform settings ─────────────────────────────────────────
-        wf_frame = ttk.LabelFrame(self, text="Waveform Settings", padding=8)
+        wf_frame = ttk.LabelFrame(body, text="Waveform Settings", padding=8)
         wf_frame.grid(row=2, column=0, columnspan=4, sticky="nsew", pady=(10, 5))
         for c in range(4):
             wf_frame.columnconfigure(c, weight=1)
@@ -469,7 +503,7 @@ class MokuWaveformFrame(ttk.Frame):
         )
 
         # ── Action buttons ────────────────────────────────────────────
-        btn_frame = ttk.Frame(self, padding=(0, 10, 0, 0))
+        btn_frame = ttk.Frame(body, padding=(0, 10, 0, 0))
         btn_frame.grid(row=3, column=0, columnspan=4, sticky="ew")
         btn_frame.columnconfigure(0, weight=1)
         btn_frame.columnconfigure(1, weight=1)
@@ -484,7 +518,7 @@ class MokuWaveformFrame(ttk.Frame):
         )
 
         # ── PID Smoothing section ─────────────────────────────────────
-        pid_frame = ttk.LabelFrame(self, text="PID Smoothing (Closed-Loop)", padding=8)
+        pid_frame = ttk.LabelFrame(body, text="PID Smoothing (Closed-Loop)", padding=8)
         pid_frame.grid(row=4, column=0, columnspan=4, sticky="ew", pady=(10, 5))
         pid_frame.columnconfigure(1, weight=1)
 
@@ -545,7 +579,7 @@ class MokuWaveformFrame(ttk.Frame):
         # Disabled while the software closed-loop controller drives Output 1.
         self._software_locked_widgets = [self._apply_wave_btn, self._pid_check]
 
-        self.rowconfigure(2, weight=1)
+        body.columnconfigure(0, weight=1)
         self._on_type_changed()
 
     def _make_setting_row(self, frame, row: int, label: str, variable, hint: str):
@@ -560,6 +594,27 @@ class MokuWaveformFrame(ttk.Frame):
     # ==================================================================
     # Connection logic (MiM-first)
     # ==================================================================
+    def _grab_ip(self):
+        path = self.ip_file_var.get().strip().strip('"')
+        if not path:
+            messagebox.showwarning("IP file", "Enter the path to the file that contains the Moku IP.")
+            return
+        try:
+            with open(path, "r", encoding="utf-8") as handle:
+                ip = ""
+                for line in handle:
+                    ip = line.strip()
+                    if ip:
+                        break
+        except OSError as e:
+            messagebox.showerror("IP file", f"Could not read that file:\n{e}")
+            return
+        if not ip:
+            messagebox.showwarning("IP file", "That file does not contain an IP address.")
+            return
+        self.ip_var.set(ip)
+        self._connect()
+
     def _connect(self):
         if not HAS_MOKU:
             messagebox.showerror(
@@ -652,7 +707,17 @@ class MokuWaveformFrame(ttk.Frame):
         """Command a DC level on `channel`. Called every tick by the loop."""
         if self._wg is None:
             raise RuntimeError("Moku not connected")
-        self._wg.set_output(channel, "DC", dc_level=float(voltage))
+        voltage = float(voltage)
+        if voltage < MOKUGO_OFFSET_MIN:
+            voltage = MOKUGO_OFFSET_MIN
+        elif voltage > MOKUGO_OFFSET_MAX:
+            voltage = MOKUGO_OFFSET_MAX
+        self._wg.generate_waveform(
+            channel=channel,
+            type="DC",
+            dc_level=voltage,
+            strict=True,
+        )
 
     def begin_software_control(self, channel: int = 1):
         """Hand Output 1 to the software loop. Raises if not connected."""

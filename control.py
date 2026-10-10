@@ -153,6 +153,45 @@ class TrajectoryGenerator:
         return self.frequency_hz > bw_hz
 
 
+# A piezo step settles in well under a second. A fit slower than this did not
+# actually settle during identification; using it makes the loop cut the
+# voltage while the setpoint is still above the measurement.
+MAX_PLAUSIBLE_TAU_S = 1.0
+MAX_PLAUSIBLE_THETA_S = 0.2
+
+
+def plant_fit_usable(tau_s: float, theta_s: float) -> bool:
+    """False when an identification fit is too slow to be a piezo model."""
+    return float(tau_s) <= MAX_PLAUSIBLE_TAU_S and float(theta_s) <= MAX_PLAUSIBLE_THETA_S
+
+
+def lift_reference(
+    offset_nm: float,
+    amplitude_nm: float,
+    waveform: str,
+    frequency_hz: float,
+    y_rest_nm: float,
+    margin_nm: float = 25.0,
+) -> float:
+    """Nanometres to add so the wave stays above the measured 0 V position.
+
+    The interferometer reading at 0 V is not 0 nm, and the piezo voltage cannot
+    go negative. A setpoint at or below that rest reading makes the controller
+    request a negative voltage, which is clipped to 0 V, so the piezo never moves.
+    """
+    amp = abs(float(amplitude_nm))
+    moving = waveform != "DC" and frequency_hz > 0.0
+    if not moving:
+        level = float(offset_nm) + (amp if waveform == "DC" else 0.0)
+        return max(0.0, (y_rest_nm + margin_nm) - level)
+    if waveform == "Pulse":
+        trough = float(offset_nm)
+    else:
+        # Sine, square, and ramp swing from offset - amplitude to offset + amplitude.
+        trough = float(offset_nm) - amp
+    return max(0.0, (y_rest_nm + margin_nm) - trough)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Controllers
 # ─────────────────────────────────────────────────────────────────────────────

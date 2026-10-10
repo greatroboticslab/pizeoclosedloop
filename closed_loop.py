@@ -48,9 +48,14 @@ from control import (
     PlantModel,
     PreviewADRC,
     SoftwarePID,
+    DEFAULT_K_NM_PER_V,
+    DEFAULT_TAU_S,
+    DEFAULT_THETA_PLANT,
     TrajectoryGenerator,
     fit_fopdt_step,
     imc_tune,
+    lift_reference,
+    plant_fit_usable,
 )
 from process_raw import get_downloads_dir, select_folder_native
 
@@ -85,6 +90,28 @@ AB_SETTLE_TAUS = 5.0
 
 # Rolling window shown in the live plot.
 PLOT_WINDOW_S = 30.0
+
+# A few-nanometre gap otherwise fills the whole axis and looks like the traces
+# are at opposite ends of the travel.
+PLOT_MIN_SPAN_NM = 50.0
+PLOT_MIN_SPAN_V = 0.5
+
+# How long to hold 0 V before reading the rest position the sine is built on.
+REST_SETTLE_S = 0.4
+REST_MARGIN_NM = 25.0
+
+# This loop updates the Moku about 20 times a second. A 5 Hz sine is only a
+# few points per cycle. uMD publishes integer fringe counts (λ/2 ≈ 316 nm),
+# so a 200 nm wave never moves the reading and the command collapses to 0 V.
+FOLLOWABLE_FREQ_HZ = 0.2
+FOLLOWABLE_FREQ_MAX_HZ = 1.0
+FOLLOWABLE_AMP_NM = 1000.0
+FOLLOWABLE_AMP_MIN_NM = 250.0
+
+# Give up when the output sits on a rail and the error is still larger than
+# the wave. Otherwise a run that has already lost the setpoint logs 0 V until
+# the timer ends, which is what the 13:17 log did for its last 20 seconds.
+PINNED_ABORT_S = 1.0
 
 # Hard ceiling on the v_max a user may type, independent of the piezo model.
 V_MAX_CEILING = 10.0
@@ -129,7 +156,7 @@ class LivePlot:
         self.clear()
 
     def _style_axes(self):
-        self.ax_track.set_ylabel("position (nm)")
+        self.ax_track.set_ylabel("from rest (nm)")
         self.ax_err.set_ylabel("error (nm)")
         self.ax_volt.set_ylabel("command (V)")
         self.ax_volt.set_xlabel("time (s)")
@@ -196,7 +223,19 @@ class LivePlot:
         for ax in (self.ax_track, self.ax_err, self.ax_volt):
             ax.relim()
             ax.autoscale_view()
+        self._ensure_span(self.ax_track, PLOT_MIN_SPAN_NM)
+        self._ensure_span(self.ax_err, PLOT_MIN_SPAN_NM)
+        self._ensure_span(self.ax_volt, PLOT_MIN_SPAN_V)
         self.canvas.draw_idle()
+
+    @staticmethod
+    def _ensure_span(ax, minimum: float):
+        lo, hi = ax.get_ylim()
+        if hi - lo >= minimum:
+            return
+        mid = 0.5 * (lo + hi)
+        half = 0.5 * minimum
+        ax.set_ylim(mid - half, mid + half)
 
     def show_comparison(self, runs):
         """
@@ -570,9 +609,9 @@ class ClosedLoopFrame(ttk.Frame):
                   font=("Segoe UI", 7), foreground="grey").grid(row=0, column=2,
                                                                 sticky="w", padx=(6, 0))
         self._grid_fields(f, [
-            ("Amplitude (nm):", self.amp_var,  "Target displacement"),
-            ("Frequency (Hz):", self.freq_var, "0 = static setpoint"),
-            ("Offset (nm):",    self.off_var,  "Piezo is unipolar: keep r >= 0"),
+            ("Amplitude (nm):", self.amp_var,  "Hundreds of nm, not a few"),
+            ("Frequency (Hz):", self.freq_var, "0.2 Hz tracks; 0 = hold still"),
+            ("Offset (nm):",    self.off_var,  "Lifted if the wave would sit at 0 V"),
         ], start_row=1)
         return row + 1
 
@@ -746,6 +785,12 @@ class ClosedLoopFrame(ttk.Frame):
                     "Check the wiring polarity or the interferometer sign.")
 
             K, tau, theta = fit_fopdt_step(t_rel, y_rel, v_step, y0_nm=y0)
+            if not plant_fit_usable(tau, theta):
+                return self._finish(
+                    f"Status: identification failed — fitted tau {tau*1e3:.0f} ms "
+                    f"and dead time {theta*1e3:.0f} ms, so the step did not settle. "
+                    "The previous model was left unchanged."
+                )
         except Exception as e:
             self._safe_zero(channel)
             return self._finish(f"Status: identification error — {e}")
@@ -839,11 +884,76 @@ class ClosedLoopFrame(ttk.Frame):
             )
         return model, traj, dt, cfg
 
+    def _coerce_trajectory(self) -> str:
+        """
+        Replace a wave this loop cannot physically draw.
+
+        5 Hz is only a handful of voltage updates per cycle, and 5 nm is smaller
+        than the interferometer noise. Either one leaves the command at 0 V.
+        """
+        if self.wave_var.get() == "DC":
+            return ""
+        try:
+            freq = float(self.freq_var.get())
+            amp = float(self.amp_var.get())
+        except Exception:
+            return ""
+        notes = []
+        if freq > FOLLOWABLE_FREQ_MAX_HZ:
+            self.freq_var.set(FOLLOWABLE_FREQ_HZ)
+            notes.append(
+                f"frequency set to {FOLLOWABLE_FREQ_HZ:g} Hz "
+                f"({freq:g} Hz is faster than this loop can steer)"
+            )
+        if freq > 0.0 and abs(amp) < FOLLOWABLE_AMP_MIN_NM:
+            self.amp_var.set(FOLLOWABLE_AMP_NM)
+            notes.append(
+                f"amplitude set to {FOLLOWABLE_AMP_NM:g} nm "
+                f"({abs(amp):g} nm is smaller than one interferometer fringe)"
+            )
+        return " ".join(notes)
+
+    def _repair_plant_model(self) -> str:
+        """
+        Drop an identification fit that never settled.
+
+        The 13:17 run used tau = 2.9 s and a 416 ms dead time. That model
+        treated one fringe of motion as an overshoot and walked the command
+        down to 0 V.
+        """
+        try:
+            tau_ms = float(self.tau_var.get())
+            theta_ms = float(self.theta_plant_var.get())
+        except Exception:
+            return ""
+        if plant_fit_usable(tau_ms / 1e3, theta_ms / 1e3):
+            return ""
+        self.k_var.set(DEFAULT_K_NM_PER_V)
+        self.tau_var.set(DEFAULT_TAU_S * 1e3)
+        self.theta_plant_var.set(DEFAULT_THETA_PLANT * 1e3)
+        try:
+            gains = imc_tune(self._read_model(), self._read_dt())
+        except Exception as e:
+            return f"Plant fit was unsettled, and retuning failed ({e})."
+        self.kp_var.set(round(gains["kp"], 9))
+        self.ki_var.set(round(gains["ki"], 9))
+        self.kd_var.set(round(gains["kd"], 9))
+        self.dfn_var.set(gains["d_filter_n"])
+        self.w0_var.set(round(gains["w0"], 4))
+        return (
+            f"Plant fit was unsettled (tau {tau_ms:.0f} ms, dead time {theta_ms:.0f} ms). "
+            "Using the default model and retuned gains."
+        )
+
     def start(self):
         if self._busy():
             return
+        self._follow_note = " ".join(
+            n for n in (self._repair_plant_model(), self._coerce_trajectory()) if n
+        )
         prepared = self._prepare()
         if prepared is None:
+            self._follow_note = ""
             return
         model, traj, dt, cfg = prepared
         try:
@@ -867,8 +977,12 @@ class ClosedLoopFrame(ttk.Frame):
         """Run both algorithms back to back over the same trajectory."""
         if self._busy():
             return
+        self._follow_note = " ".join(
+            n for n in (self._repair_plant_model(), self._coerce_trajectory()) if n
+        )
         prepared = self._prepare()
         if prepared is None:
+            self._follow_note = ""
             return
         model, traj, dt, cfg = prepared
 
@@ -991,10 +1105,24 @@ class ClosedLoopFrame(ttk.Frame):
         writer = log_file = None
         T, R, Y, E, V, RES = [], [], [], [], [], []
         jitter_warned = False
+        pinned_since = None
         reason = "Status: finished."
 
         with self._lock:
             self._trace = {}
+
+        # The interferometer's zero is not the piezo's 0 V position. Run the
+        # controller on motion relative to the rest reading, and lift the wave
+        # if it would otherwise sit where the voltage can only be clipped to 0.
+        y_rest = self._measure_rest(cfg["channel"], dt)
+        if self._stop_flag.is_set():
+            return None, "Status: stopped by user."
+        if y_rest is None:
+            return None, "Status: stopped — no measurement while finding the rest position."
+        shift = lift_reference(
+            traj.offset_nm, traj.amplitude_nm, traj.waveform,
+            traj.frequency_hz, y_rest, REST_MARGIN_NM,
+        )
 
         try:
             if cfg["log"]:
@@ -1012,7 +1140,8 @@ class ClosedLoopFrame(ttk.Frame):
                     f"theta_sensor_s={model.theta_sensor_s}",
                     f"dt_s={dt}", f"waveform={traj.waveform}",
                     f"amp_nm={traj.amplitude_nm}", f"freq_hz={traj.frequency_hz}",
-                    f"offset_nm={traj.offset_nm}",
+                    f"offset_nm={traj.offset_nm}", f"y_rest_nm={y_rest}",
+                    f"lift_nm={shift}",
                 ])
                 writer.writerow(["t_s", "r_nm", "y_nm", "e_nm", "v_V", "dt_meas_s", "res1_nm"])
                 with self._lock:
@@ -1043,23 +1172,46 @@ class ClosedLoopFrame(ttk.Frame):
                 t_prev = now
                 dt_eff = dt_meas if 0.0 < dt_meas < 10.0 * dt else dt
 
-                r = traj.r(t)
+                r = traj.r(t) + shift
+                y_rel = y_meas - y_rest
                 if is_preview:
                     t_d, t_d1 = controller.preview_times(t)
-                    v = controller.update(traj.r(t_d), traj.r(t_d1), y_meas, dt_eff)
+                    v = controller.update(
+                        traj.r(t_d) + shift - y_rest,
+                        traj.r(t_d1) + shift - y_rest,
+                        y_rel, dt_eff)
                     res1 = controller.diagnostics()["res1"]
                 else:
-                    v = controller.update(r, y_meas, dt_eff)
+                    v = controller.update(r - y_rest, y_rel, dt_eff)
                     res1 = float("nan")
 
                 self.moku_tab.set_dc_voltage(v, cfg["channel"])
 
                 e = r - y_meas
-                T.append(t); R.append(r); Y.append(y_meas); E.append(e); V.append(v)
+                r_rel = r - y_rest
+                tol = max(abs(traj.amplitude_nm), 300.0)
+                pinned = (v <= 1e-3 and e > tol) or (v >= model.v_max - 1e-3 and e < -tol)
+                if pinned:
+                    if pinned_since is None:
+                        pinned_since = now
+                    elif now - pinned_since >= PINNED_ABORT_S:
+                        rail = "0 V" if v <= 1e-3 else f"{model.v_max:g} V"
+                        reason = (
+                            f"Status: stopped — command sat at {rail} for "
+                            f"{PINNED_ABORT_S:.0f} s while the error stayed past "
+                            f"{tol:.0f} nm. The piezo cannot move any further that way."
+                        )
+                        T.append(t); R.append(r_rel); Y.append(y_rel); E.append(e); V.append(v)
+                        RES.append(res1)
+                        break
+                else:
+                    pinned_since = None
+
+                T.append(t); R.append(r_rel); Y.append(y_rel); E.append(e); V.append(v)
                 RES.append(res1)
 
                 if writer is not None:
-                    writer.writerow([f"{t:.6f}", f"{r:.4f}", f"{y_meas:.4f}",
+                    writer.writerow([f"{t:.6f}", f"{r_rel:.4f}", f"{y_rel:.4f}",
                                      f"{e:.4f}", f"{v:.6f}", f"{dt_meas:.6f}",
                                      f"{res1:.4f}" if is_preview else ""])
 
@@ -1073,7 +1225,7 @@ class ClosedLoopFrame(ttk.Frame):
                 rmse = float(np.sqrt(np.mean(np.square(E))))
                 with self._lock:
                     self._live.update({
-                        "t": t, "r": r, "y": y_meas, "e": e, "v": v,
+                        "t": t, "r": r_rel, "y": y_rel, "e": e, "v": v,
                         "dt_meas": dt_meas, "n": n, "rmse": rmse,
                         "max_err": float(np.max(np.abs(E))),
                         "algo": controller.name,
@@ -1102,6 +1254,10 @@ class ClosedLoopFrame(ttk.Frame):
                 except Exception:
                     pass
 
+        if shift >= 1.0:
+            center = traj.offset_nm + shift - y_rest
+            reason += f"  Working {center:.0f} nm above the reading at 0 V."
+
         if not E:
             return None, reason
 
@@ -1116,6 +1272,22 @@ class ClosedLoopFrame(ttk.Frame):
             "max_err": float(np.max(np.abs(e_arr))),
             "iae": float(np.sum(np.abs(e_arr)) * dt),
         }, reason
+
+    def _measure_rest(self, channel: int, dt: float):
+        """Hold 0 V briefly and return the interferometer reading there."""
+        with self._lock:
+            self._live["phase"] = "measuring rest position at 0 V"
+        t_end = time.perf_counter() + REST_SETTLE_S
+        ys = []
+        while time.perf_counter() < t_end and not self._stop_flag.is_set():
+            self.moku_tab.set_dc_voltage(0.0, channel)
+            sample = self.display_tab.read_latest()
+            if sample is not None:
+                ys.append(sample[1])
+            time.sleep(max(dt, 0.02))
+        if len(ys) < 3:
+            return None
+        return float(np.mean(ys[-5:]))
 
     def _safe_zero(self, channel: int):
         try:
@@ -1208,6 +1380,9 @@ class ClosedLoopFrame(ttk.Frame):
             self.plot.show_comparison(ab)
             self.metrics_var.set(self._format_ab(ab))
         if final is not None:
+            extra = getattr(self, "_follow_note", "")
+            if extra:
+                final = f"{final}  {extra}"
             self.status_var.set(final)
         self._save_settings()
         self._set_running(False)
