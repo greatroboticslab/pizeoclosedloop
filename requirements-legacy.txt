@@ -1,0 +1,5 @@
+-r requirements-dev.txt
+ttkbootstrap>=1.10
+paho-mqtt
+matplotlib
+pyserial

@@ -1,0 +1,45 @@
+name: Cross-platform host
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      QT_QPA_PLATFORM: offscreen
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install Qt system libraries
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libopengl0
+      - name: Install dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Install HDL simulator (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y iverilog
+      - name: Install HDL simulator (macOS)
+        if: runner.os == 'macOS'
+        run: brew install icarus-verilog
+      - name: Test host and numerical reference
+        run: python -m pytest tests test_control.py -v
+      - name: Check entry point
+        run: python app.py --help
+      - name: Native application build
+        run: python -m PyInstaller --clean --noconfirm moku_host.spec
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LaserAI-${{ runner.os }}
+          path: dist/
+          if-no-files-found: error

@@ -1,0 +1,4 @@
+-r requirements.txt
+pytest>=8.3,<10
+pyinstaller>=6.11,<7
+matplotlib>=3.10,<4

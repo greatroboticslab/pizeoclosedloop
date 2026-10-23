@@ -1,37 +1,62 @@
 # AGENTS.md
 
-Python 3.13 desktop app (ttkbootstrap/Tk) orchestrating a laser interferometry workflow: Moku:Go waveform generation, a bundled VB app (`umd_gui/uMD_GUI.exe`) that publishes interferometer values over MQTT (topic `vb_to_py`), a bundled Mosquitto broker, recording, and offline processing. Windows is the primary target.
+Python 3.13 cross-platform Moku:Go host (PySide6/pyqtgraph). `app.py` launches the
+new application; `legacy_app.py` preserves the old Windows Tk/VB/MQTT workflow.
 
 ## Commands
 
-- Run: `python app.py`
-- Tests (headless, no hardware): `python3 -m pytest test_control.py -v`
-- Integration tests (need a display/Tk; auto-skip without one): `python3 -m pytest test_closed_loop.py -v`
-- `test_control.py` also runs standalone: `python3 test_control.py`
-- Build Windows exe: use the spec file, e.g. `python -m PyInstaller LaserLab_v4.spec` (or the one-liner in README; PowerShell backtick continuation)
+- Run without hardware: `python app.py --simulation`
+- Startup diagnostics: `python app.py --diagnose`
+- Host and reference tests: `python -m pytest tests test_control.py -v`
+- Headless Qt tests: set `QT_QPA_PLATFORM=offscreen`
+- Build natively on each OS: `python -m PyInstaller moku_host.spec`
+- Legacy integration tests: `python -m pytest test_closed_loop.py -v` (requires Tk/display; auto-skips without it)
 
-No lint/typecheck/format config exists; don't invent tooling.
+No lint/typecheck/format config exists; do not invent tooling.
 
-## Architecture facts an agent would miss
+## Architecture
 
-- **Python does not do the low-level interferometer decoding.** The VB `uMD_GUI.exe` is part of the live data path: it publishes `refCount,D,phaseRaw` payloads that `display.py` parses and converts to nm. Keep this pipeline intact.
-- **Two different "PID" features exist and are mutually exclusive** (both drive Moku Output 1):
-  - Moku tab "PID Smoothing": PID in the Moku FPGA, sees only the waveform generator output.
-  - `closed_loop.py` "Closed-Loop Control": software PID / Preview+ADRC in Python, closing the loop via MQTT → `control.py` → `moku_waveform.py:set_dc_voltage()`.
-- `control.py` is deliberately free of Tk/MQTT/Moku imports so it stays headless-testable. Keep GUI code out of it.
-- `moku_waveform.py` deploys Moku Multi-Instrument Mode (slot 1 WG, slot 2 PID); it is the single source of truth for waveform config — the Record tab mirrors it, does not own it.
-- Closed-loop seam: `display.py:DisplayFrame.read_latest()` (measurement in) and `moku_waveform.py:set_dc_voltage()` (actuation out).
-- `app_settings.py` stores user settings as JSON under the home directory (not next to code) because PyInstaller's `_MEIPASS` is read-only and temporary. Don't write settings into the app directory.
+- The new runtime never starts VB, Mosquitto, Windows batch files or the bundled
+  Windows CLI. Moku performs real-time acquisition, conversion, reference
+  generation, control and protection; Python performs configuration and display.
+- `laserai/` owns the new host. Device operations belong behind its device
+  interface, not in widgets. Communication, streaming and saving run off the Qt
+  main thread. Widgets update only on the main thread.
+- `fpga/` owns controller sources and the register contract in
+  `laserai/protocol.py`. A source file is not a deployable bitstream. Require a
+  compatible compiled target and verified hardware calibration before output.
+- Moku:Go three-slot design: Phasemeter, Custom Instrument and Datalogger. Only
+  custom OutputA/B are routable; Datalogger has two input channels. Do not claim
+  four synchronous telemetry channels or infer PLL lock from host refresh rate.
+- `control.py` is the headless numerical reference. Keep Tk, Qt, MQTT and Moku
+  imports out of it. Its simulation defaults are not hardware calibration.
+- Hardware and local settings live under `~/.laserai/`, using `pathlib`.
+  Hardware profiles must fail on corruption; never substitute defaults that can
+  energize an output. Missing calibration permits diagnostics and simulation,
+  but blocks physical output. Unknown physical values are JSON `null`.
+- Portable rig profiles and machine-specific settings are separate. Explicit
+  local CLI path takes priority over `MOKU_CLI_PATH`, then SDK discovery.
+- Every experiment snapshots configuration, firmware/device identity and the
+  bitstream identity. Never claim hardware-qualified performance from simulation.
 
-## Conventions
+## Legacy Contracts
 
-- Tk widgets that take a `bootstyle` option must be `tb.*` (ttkbootstrap), not plain `ttk.*` (required for ttkbootstrap 2.x compatibility). Plain ttk is fine for labels/entries/frames.
-- UI updates only on the main thread; worker threads read shared "latest" values rather than touching widgets.
-- No hardcoded absolute paths; use the PyInstaller-safe `BASE_DIR` helpers from `app.py`.
-- `process_raw.py` pins the matplotlib global backend to Agg; `closed_loop.py` embeds figures via `FigureCanvasTkAgg` without pyplot. Preserve this split — PyInstaller needs `matplotlib.backends.backend_tkagg` listed as a hiddenimport for this reason.
-- Recorded log format (`D:<count> N:<serial>`) is a contract with `process_raw.py`; keep them compatible.
+- In `legacy_app.py`, VB `uMD_GUI.exe` publishes `refCount,D,phaseRaw` over MQTT
+  (`vb_to_py`); `display.py` converts it to nm. Preserve this legacy path.
+- Two old PID features share Output 1: FPGA waveform smoothing in
+  `moku_waveform.py`, and software feedback in `closed_loop.py`. They are mutually
+  exclusive and do not belong in the new runtime.
+- Legacy widgets taking `bootstyle` must be `tb.*`, not plain `ttk.*`.
+- `process_raw.py` uses Agg; `closed_loop.py` embeds `FigureCanvasTkAgg` without
+  pyplot. Legacy packaging needs `matplotlib.backends.backend_tkagg`.
+- Legacy `D:<count> N:<serial>` logs remain compatible with `process_raw.py`.
+- `app_settings.py` saves legacy JSON in the user's home directory; its tolerant
+  loading behavior is unsuitable for the new hardware configuration.
 
-## Testing notes
+## Validation
 
-- `control.py` was ported from a MATLAB project (`/Users/nccer/Documents/meter`); test acceptance criteria mirror `meter/test_simulate.m` — with an exact model and no noise, Preview must track better than PID.
-- Tests never require Moku hardware, MQTT, or the broker.
+Tests require no Moku, MQTT or broker. Numerical Preview comparisons use the
+MATLAB reference's exact-model/no-noise acceptance case. Hardware acceptance is
+staged: measure phase range/wrap/latency/loss first, then low-amplitude open loop,
+PID and Preview+ADRC. Target: 20 Hz, at least 500 nm peak, steady RMSE <=50 nm.
+Report simulation, HDL simulation, synthesis and physical tests separately.

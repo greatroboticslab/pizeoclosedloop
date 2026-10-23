@@ -1,0 +1,14 @@
+{
+  "command": [
+    "/Users/nccer/Documents/laserai/.venv/bin/python",
+    "-X",
+    "faulthandler",
+    "-m",
+    "pytest",
+    "tests",
+    "test_control.py",
+    "-v"
+  ],
+  "exit_code": 0,
+  "summary": "88 passed in 3.61s"
+}

@@ -1,0 +1,1971 @@
+{
+  "environment": {
+    "created_utc": "2026-10-22T18:42:22.856971+00:00",
+    "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+    "python": "3.13.13 (main, Apr  7 2026, 18:19:01) [Clang 21.0.0 (clang-2100.0.123.102)]",
+    "packages": {
+      "numpy": "2.5.2",
+      "scipy": "1.18.1",
+      "PySide6": "6.12.0",
+      "pyqtgraph": "0.14.0",
+      "moku": "4.3.0.1"
+    },
+    "vendor_demo_api_used": false,
+    "physical_hardware_used": false
+  },
+  "cases": {
+    "baseline-1Hz": {
+      "summary_path": "reports/moku-simulation-2026-10-23/experiments/baseline-1Hz/ab-dfce6e49.json",
+      "simulation": true,
+      "runs": [
+        {
+          "repeat": 1,
+          "mode": "pid",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-1Hz/20261022T184213.825186Z-pid-6772a9bb",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 27.10178134547997,
+            "mean_error_nm": 0.03846423339845387,
+            "peak_error_nm": 44.92605298112085,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.98744910938325,
+            "measured_amplitude_nm": 498.5343155337585,
+            "amplitude_ratio": 0.997093659894437,
+            "phase_lag_deg": 4.378486276503963,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 1,
+          "mode": "preview",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-1Hz/20261022T184213.984544Z-preview-e66c8400",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 4.507591297702722,
+            "mean_error_nm": 0.007871887207091732,
+            "peak_error_nm": 6.551055116215366,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.98744910938325,
+            "measured_amplitude_nm": 500.33120410420736,
+            "amplitude_ratio": 1.0006875272478069,
+            "phase_lag_deg": -0.7290986386574048,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 2,
+          "mode": "preview",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-1Hz/20261022T184214.158391Z-preview-7813a7a7",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 4.507591297702722,
+            "mean_error_nm": 0.007871887207091732,
+            "peak_error_nm": 6.551055116215366,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.98744910938325,
+            "measured_amplitude_nm": 500.33120410420736,
+            "amplitude_ratio": 1.0006875272478069,
+            "phase_lag_deg": -0.7290986386574048,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 2,
+          "mode": "pid",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-1Hz/20261022T184214.333088Z-pid-799d030f",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 27.10178134547997,
+            "mean_error_nm": 0.03846423339845387,
+            "peak_error_nm": 44.92605298112085,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.98744910938325,
+            "measured_amplitude_nm": 498.5343155337585,
+            "amplitude_ratio": 0.997093659894437,
+            "phase_lag_deg": 4.378486276503963,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 3,
+          "mode": "pid",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-1Hz/20261022T184214.488968Z-pid-1b58d0dc",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 27.10178134547997,
+            "mean_error_nm": 0.03846423339845387,
+            "peak_error_nm": 44.92605298112085,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.98744910938325,
+            "measured_amplitude_nm": 498.5343155337585,
+            "amplitude_ratio": 0.997093659894437,
+            "phase_lag_deg": 4.378486276503963,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 3,
+          "mode": "preview",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-1Hz/20261022T184214.646538Z-preview-e05035b6",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 4.507591297702722,
+            "mean_error_nm": 0.007871887207091732,
+            "peak_error_nm": 6.551055116215366,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.98744910938325,
+            "measured_amplitude_nm": 500.33120410420736,
+            "amplitude_ratio": 1.0006875272478069,
+            "phase_lag_deg": -0.7290986386574048,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        }
+      ],
+      "aggregate": {
+        "pid": {
+          "rmse_nm": {
+            "mean": 27.101781345479974,
+            "std": 3.552713678800501e-15,
+            "min": 27.10178134547997,
+            "max": 27.10178134547997
+          },
+          "amplitude_ratio": {
+            "mean": 0.997093659894437,
+            "std": 0.0,
+            "min": 0.997093659894437,
+            "max": 0.997093659894437
+          },
+          "phase_lag_deg": {
+            "mean": 4.378486276503963,
+            "std": 0.0,
+            "min": 4.378486276503963,
+            "max": 4.378486276503963
+          },
+          "saturation_ratio": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        },
+        "preview": {
+          "rmse_nm": {
+            "mean": 4.507591297702722,
+            "std": 0.0,
+            "min": 4.507591297702722,
+            "max": 4.507591297702722
+          },
+          "amplitude_ratio": {
+            "mean": 1.0006875272478069,
+            "std": 0.0,
+            "min": 1.0006875272478069,
+            "max": 1.0006875272478069
+          },
+          "phase_lag_deg": {
+            "mean": -0.7290986386574048,
+            "std": 0.0,
+            "min": -0.7290986386574048,
+            "max": -0.7290986386574048
+          },
+          "saturation_ratio": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        }
+      },
+      "hardware_target_verified": false
+    },
+    "baseline-5Hz": {
+      "summary_path": "reports/moku-simulation-2026-10-23/experiments/baseline-5Hz/ab-5054d41c.json",
+      "simulation": true,
+      "runs": [
+        {
+          "repeat": 1,
+          "mode": "pid",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-5Hz/20261022T184214.824337Z-pid-6e9bbccb",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 124.48442231967861,
+            "mean_error_nm": 0.03741935729978923,
+            "peak_error_nm": 181.32995585477556,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.98746868143974,
+            "measured_amplitude_nm": 469.1122157272206,
+            "amplitude_ratio": 0.9382479464222514,
+            "phase_lag_deg": 20.611390580094508,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 1,
+          "mode": "preview",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-5Hz/20261022T184214.988102Z-preview-ff7de4ec",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 25.61661292317177,
+            "mean_error_nm": 0.007671585082993033,
+            "peak_error_nm": 36.285526108908925,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.98746868143974,
+            "measured_amplitude_nm": 516.3932796220371,
+            "amplitude_ratio": 1.032812444247578,
+            "phase_lag_deg": -3.642702519716238,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 2,
+          "mode": "preview",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-5Hz/20261022T184215.163569Z-preview-0fbe15e2",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 25.61661292317177,
+            "mean_error_nm": 0.007671585082993033,
+            "peak_error_nm": 36.285526108908925,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.98746868143974,
+            "measured_amplitude_nm": 516.3932796220371,
+            "amplitude_ratio": 1.032812444247578,
+            "phase_lag_deg": -3.642702519716238,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 2,
+          "mode": "pid",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-5Hz/20261022T184215.336659Z-pid-e98fe313",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 124.48442231967861,
+            "mean_error_nm": 0.03741935729978923,
+            "peak_error_nm": 181.32995585477556,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.98746868143974,
+            "measured_amplitude_nm": 469.1122157272206,
+            "amplitude_ratio": 0.9382479464222514,
+            "phase_lag_deg": 20.611390580094508,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 3,
+          "mode": "pid",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-5Hz/20261022T184215.492398Z-pid-750dd5cb",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 124.48442231967861,
+            "mean_error_nm": 0.03741935729978923,
+            "peak_error_nm": 181.32995585477556,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.98746868143974,
+            "measured_amplitude_nm": 469.1122157272206,
+            "amplitude_ratio": 0.9382479464222514,
+            "phase_lag_deg": 20.611390580094508,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 3,
+          "mode": "preview",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-5Hz/20261022T184215.651029Z-preview-5d33e4d3",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 25.61661292317177,
+            "mean_error_nm": 0.007671585082993033,
+            "peak_error_nm": 36.285526108908925,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.98746868143974,
+            "measured_amplitude_nm": 516.3932796220371,
+            "amplitude_ratio": 1.032812444247578,
+            "phase_lag_deg": -3.642702519716238,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        }
+      ],
+      "aggregate": {
+        "pid": {
+          "rmse_nm": {
+            "mean": 124.48442231967861,
+            "std": 0.0,
+            "min": 124.48442231967861,
+            "max": 124.48442231967861
+          },
+          "amplitude_ratio": {
+            "mean": 0.9382479464222514,
+            "std": 0.0,
+            "min": 0.9382479464222514,
+            "max": 0.9382479464222514
+          },
+          "phase_lag_deg": {
+            "mean": 20.611390580094508,
+            "std": 0.0,
+            "min": 20.611390580094508,
+            "max": 20.611390580094508
+          },
+          "saturation_ratio": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        },
+        "preview": {
+          "rmse_nm": {
+            "mean": 25.61661292317177,
+            "std": 0.0,
+            "min": 25.61661292317177,
+            "max": 25.61661292317177
+          },
+          "amplitude_ratio": {
+            "mean": 1.032812444247578,
+            "std": 0.0,
+            "min": 1.032812444247578,
+            "max": 1.032812444247578
+          },
+          "phase_lag_deg": {
+            "mean": -3.642702519716238,
+            "std": 0.0,
+            "min": -3.642702519716238,
+            "max": -3.642702519716238
+          },
+          "saturation_ratio": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        }
+      },
+      "hardware_target_verified": false
+    },
+    "baseline-10Hz": {
+      "summary_path": "reports/moku-simulation-2026-10-23/experiments/baseline-10Hz/ab-bdd1ecd6.json",
+      "simulation": true,
+      "runs": [
+        {
+          "repeat": 1,
+          "mode": "pid",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-10Hz/20261022T184215.829081Z-pid-630bff0f",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 209.8514412782112,
+            "mean_error_nm": 0.037482299804714785,
+            "peak_error_nm": 300.86094039331647,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.98746979172785,
+            "measured_amplitude_nm": 414.4777202177317,
+            "amplitude_ratio": 0.8289762149247147,
+            "phase_lag_deg": 36.373079069213446,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 1,
+          "mode": "preview",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-10Hz/20261022T184215.984075Z-preview-432015ee",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 46.513723939533925,
+            "mean_error_nm": 0.007953491210966604,
+            "peak_error_nm": 65.72571724297342,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.98746979172785,
+            "measured_amplitude_nm": 558.8423171352354,
+            "amplitude_ratio": 1.1177126446149217,
+            "phase_lag_deg": -3.184923099663706,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 2,
+          "mode": "preview",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-10Hz/20261022T184216.157342Z-preview-7b2bbafc",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 46.513723939533925,
+            "mean_error_nm": 0.007953491210966604,
+            "peak_error_nm": 65.72571724297342,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.98746979172785,
+            "measured_amplitude_nm": 558.8423171352354,
+            "amplitude_ratio": 1.1177126446149217,
+            "phase_lag_deg": -3.184923099663706,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 2,
+          "mode": "pid",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-10Hz/20261022T184216.331237Z-pid-65826d5f",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 209.8514412782112,
+            "mean_error_nm": 0.037482299804714785,
+            "peak_error_nm": 300.86094039331647,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.98746979172785,
+            "measured_amplitude_nm": 414.4777202177317,
+            "amplitude_ratio": 0.8289762149247147,
+            "phase_lag_deg": 36.373079069213446,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 3,
+          "mode": "pid",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-10Hz/20261022T184216.487499Z-pid-25f45d87",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 209.8514412782112,
+            "mean_error_nm": 0.037482299804714785,
+            "peak_error_nm": 300.86094039331647,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.98746979172785,
+            "measured_amplitude_nm": 414.4777202177317,
+            "amplitude_ratio": 0.8289762149247147,
+            "phase_lag_deg": 36.373079069213446,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 3,
+          "mode": "preview",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-10Hz/20261022T184216.652866Z-preview-58fa53cd",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 46.513723939533925,
+            "mean_error_nm": 0.007953491210966604,
+            "peak_error_nm": 65.72571724297342,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.98746979172785,
+            "measured_amplitude_nm": 558.8423171352354,
+            "amplitude_ratio": 1.1177126446149217,
+            "phase_lag_deg": -3.184923099663706,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        }
+      ],
+      "aggregate": {
+        "pid": {
+          "rmse_nm": {
+            "mean": 209.85144127821118,
+            "std": 2.842170943040401e-14,
+            "min": 209.8514412782112,
+            "max": 209.8514412782112
+          },
+          "amplitude_ratio": {
+            "mean": 0.8289762149247147,
+            "std": 0.0,
+            "min": 0.8289762149247147,
+            "max": 0.8289762149247147
+          },
+          "phase_lag_deg": {
+            "mean": 36.373079069213446,
+            "std": 0.0,
+            "min": 36.373079069213446,
+            "max": 36.373079069213446
+          },
+          "saturation_ratio": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        },
+        "preview": {
+          "rmse_nm": {
+            "mean": 46.513723939533925,
+            "std": 0.0,
+            "min": 46.513723939533925,
+            "max": 46.513723939533925
+          },
+          "amplitude_ratio": {
+            "mean": 1.1177126446149217,
+            "std": 0.0,
+            "min": 1.1177126446149217,
+            "max": 1.1177126446149217
+          },
+          "phase_lag_deg": {
+            "mean": -3.184923099663706,
+            "std": 0.0,
+            "min": -3.184923099663706,
+            "max": -3.184923099663706
+          },
+          "saturation_ratio": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        }
+      },
+      "hardware_target_verified": false
+    },
+    "baseline-20Hz": {
+      "summary_path": "reports/moku-simulation-2026-10-23/experiments/baseline-20Hz/ab-827942bb.json",
+      "simulation": true,
+      "runs": [
+        {
+          "repeat": 1,
+          "mode": "pid",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-20Hz/20261022T184216.828431Z-pid-513f1659",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 309.16748119765515,
+            "mean_error_nm": 0.040798034668043326,
+            "peak_error_nm": 433.7033476137847,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260852702446,
+            "measured_amplitude_nm": 333.141723407215,
+            "amplitude_ratio": 0.6665152804641895,
+            "phase_lag_deg": 59.37364742569338,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 1,
+          "mode": "preview",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-20Hz/20261022T184216.987610Z-preview-5998a28f",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 49.52618935647349,
+            "mean_error_nm": 0.007890930175832296,
+            "peak_error_nm": 70.05897828811533,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260852702446,
+            "measured_amplitude_nm": 564.9107771698469,
+            "amplitude_ratio": 1.1302146762996823,
+            "phase_lag_deg": 2.7905722764028553,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": true
+          }
+        },
+        {
+          "repeat": 2,
+          "mode": "preview",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-20Hz/20261022T184217.163190Z-preview-4ba1a012",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 49.52618935647349,
+            "mean_error_nm": 0.007890930175832296,
+            "peak_error_nm": 70.05897828811533,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260852702446,
+            "measured_amplitude_nm": 564.9107771698469,
+            "amplitude_ratio": 1.1302146762996823,
+            "phase_lag_deg": 2.7905722764028553,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": true
+          }
+        },
+        {
+          "repeat": 2,
+          "mode": "pid",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-20Hz/20261022T184217.337273Z-pid-4bb6abf0",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 309.16748119765515,
+            "mean_error_nm": 0.040798034668043326,
+            "peak_error_nm": 433.7033476137847,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260852702446,
+            "measured_amplitude_nm": 333.141723407215,
+            "amplitude_ratio": 0.6665152804641895,
+            "phase_lag_deg": 59.37364742569338,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 3,
+          "mode": "pid",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-20Hz/20261022T184217.494265Z-pid-a630a455",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 309.16748119765515,
+            "mean_error_nm": 0.040798034668043326,
+            "peak_error_nm": 433.7033476137847,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260852702446,
+            "measured_amplitude_nm": 333.141723407215,
+            "amplitude_ratio": 0.6665152804641895,
+            "phase_lag_deg": 59.37364742569338,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 3,
+          "mode": "preview",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-20Hz/20261022T184217.650947Z-preview-4c3cbbb0",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 49.52618935647349,
+            "mean_error_nm": 0.007890930175832296,
+            "peak_error_nm": 70.05897828811533,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260852702446,
+            "measured_amplitude_nm": 564.9107771698469,
+            "amplitude_ratio": 1.1302146762996823,
+            "phase_lag_deg": 2.7905722764028553,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": true
+          }
+        }
+      ],
+      "aggregate": {
+        "pid": {
+          "rmse_nm": {
+            "mean": 309.16748119765515,
+            "std": 0.0,
+            "min": 309.16748119765515,
+            "max": 309.16748119765515
+          },
+          "amplitude_ratio": {
+            "mean": 0.6665152804641895,
+            "std": 0.0,
+            "min": 0.6665152804641895,
+            "max": 0.6665152804641895
+          },
+          "phase_lag_deg": {
+            "mean": 59.37364742569338,
+            "std": 0.0,
+            "min": 59.37364742569338,
+            "max": 59.37364742569338
+          },
+          "saturation_ratio": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        },
+        "preview": {
+          "rmse_nm": {
+            "mean": 49.52618935647349,
+            "std": 0.0,
+            "min": 49.52618935647349,
+            "max": 49.52618935647349
+          },
+          "amplitude_ratio": {
+            "mean": 1.1302146762996823,
+            "std": 0.0,
+            "min": 1.1302146762996823,
+            "max": 1.1302146762996823
+          },
+          "phase_lag_deg": {
+            "mean": 2.7905722764028553,
+            "std": 0.0,
+            "min": 2.7905722764028553,
+            "max": 2.7905722764028553
+          },
+          "saturation_ratio": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        }
+      },
+      "hardware_target_verified": false
+    },
+    "baseline-30Hz": {
+      "summary_path": "reports/moku-simulation-2026-10-23/experiments/baseline-30Hz/ab-879120df.json",
+      "simulation": true,
+      "runs": [
+        {
+          "repeat": 1,
+          "mode": "pid",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-30Hz/20261022T184217.828932Z-pid-01cbc0f1",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 369.70325072275324,
+            "mean_error_nm": 0.03810791015629547,
+            "peak_error_nm": 521.9737118989176,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.9874697917283,
+            "measured_amplitude_nm": 278.9708109356745,
+            "amplitude_ratio": 0.5579556044712097,
+            "phase_lag_deg": 78.74167000990644,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 1,
+          "mode": "preview",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-30Hz/20261022T184217.990121Z-preview-2fa8be19",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 39.48827871068023,
+            "mean_error_nm": 0.007953491210891457,
+            "peak_error_nm": 55.89043820030679,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.9874697917283,
+            "measured_amplitude_nm": 537.7096500275849,
+            "amplitude_ratio": 1.0754462511861944,
+            "phase_lag_deg": 4.5515006966509475,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": true
+          }
+        },
+        {
+          "repeat": 2,
+          "mode": "preview",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-30Hz/20261022T184218.164120Z-preview-37cbdd91",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 39.48827871068023,
+            "mean_error_nm": 0.007953491210891457,
+            "peak_error_nm": 55.89043820030679,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.9874697917283,
+            "measured_amplitude_nm": 537.7096500275849,
+            "amplitude_ratio": 1.0754462511861944,
+            "phase_lag_deg": 4.5515006966509475,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": true
+          }
+        },
+        {
+          "repeat": 2,
+          "mode": "pid",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-30Hz/20261022T184218.341549Z-pid-d3fc3c89",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 369.70325072275324,
+            "mean_error_nm": 0.03810791015629547,
+            "peak_error_nm": 521.9737118989176,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.9874697917283,
+            "measured_amplitude_nm": 278.9708109356745,
+            "amplitude_ratio": 0.5579556044712097,
+            "phase_lag_deg": 78.74167000990644,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 3,
+          "mode": "pid",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-30Hz/20261022T184218.499151Z-pid-2aac370d",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 369.70325072275324,
+            "mean_error_nm": 0.03810791015629547,
+            "peak_error_nm": 521.9737118989176,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.9874697917283,
+            "measured_amplitude_nm": 278.9708109356745,
+            "amplitude_ratio": 0.5579556044712097,
+            "phase_lag_deg": 78.74167000990644,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 3,
+          "mode": "preview",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-30Hz/20261022T184218.658326Z-preview-2425c5ff",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 39.48827871068023,
+            "mean_error_nm": 0.007953491210891457,
+            "peak_error_nm": 55.89043820030679,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.9874697917283,
+            "measured_amplitude_nm": 537.7096500275849,
+            "amplitude_ratio": 1.0754462511861944,
+            "phase_lag_deg": 4.5515006966509475,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": true
+          }
+        }
+      ],
+      "aggregate": {
+        "pid": {
+          "rmse_nm": {
+            "mean": 369.70325072275324,
+            "std": 0.0,
+            "min": 369.70325072275324,
+            "max": 369.70325072275324
+          },
+          "amplitude_ratio": {
+            "mean": 0.5579556044712097,
+            "std": 0.0,
+            "min": 0.5579556044712097,
+            "max": 0.5579556044712097
+          },
+          "phase_lag_deg": {
+            "mean": 78.74167000990644,
+            "std": 0.0,
+            "min": 78.74167000990644,
+            "max": 78.74167000990644
+          },
+          "saturation_ratio": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        },
+        "preview": {
+          "rmse_nm": {
+            "mean": 39.48827871068023,
+            "std": 0.0,
+            "min": 39.48827871068023,
+            "max": 39.48827871068023
+          },
+          "amplitude_ratio": {
+            "mean": 1.0754462511861944,
+            "std": 0.0,
+            "min": 1.0754462511861944,
+            "max": 1.0754462511861944
+          },
+          "phase_lag_deg": {
+            "mean": 4.5515006966509475,
+            "std": 0.0,
+            "min": 4.5515006966509475,
+            "max": 4.5515006966509475
+          },
+          "saturation_ratio": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        }
+      },
+      "hardware_target_verified": false
+    },
+    "baseline-40Hz": {
+      "summary_path": "reports/moku-simulation-2026-10-23/experiments/baseline-40Hz/ab-8d23bf42.json",
+      "simulation": true,
+      "runs": [
+        {
+          "repeat": 1,
+          "mode": "pid",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-40Hz/20261022T184218.836282Z-pid-c7d745bf",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 407.1604085176729,
+            "mean_error_nm": 0.044131469726680965,
+            "peak_error_nm": 577.8186493020039,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260856276584,
+            "measured_amplitude_nm": 236.5501827656857,
+            "amplitude_ratio": 0.4732649806955092,
+            "phase_lag_deg": 96.25515734408907,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 1,
+          "mode": "preview",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-40Hz/20261022T184218.992647Z-preview-81dd349b",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 29.624489573641114,
+            "mean_error_nm": -12.042910766601377,
+            "peak_error_nm": 51.95554366165834,
+            "saturation_ratio": 0.32,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260856276584,
+            "measured_amplitude_nm": 494.49760688090703,
+            "amplitude_ratio": 0.9893393344205712,
+            "phase_lag_deg": 4.271296951392628,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": true
+          }
+        },
+        {
+          "repeat": 2,
+          "mode": "preview",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-40Hz/20261022T184219.164038Z-preview-dd281338",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 29.624489573641114,
+            "mean_error_nm": -12.042910766601377,
+            "peak_error_nm": 51.95554366165834,
+            "saturation_ratio": 0.32,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260856276584,
+            "measured_amplitude_nm": 494.49760688090703,
+            "amplitude_ratio": 0.9893393344205712,
+            "phase_lag_deg": 4.271296951392628,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": true
+          }
+        },
+        {
+          "repeat": 2,
+          "mode": "pid",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-40Hz/20261022T184219.335638Z-pid-a30e5ee1",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 407.1604085176729,
+            "mean_error_nm": 0.044131469726680965,
+            "peak_error_nm": 577.8186493020039,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260856276584,
+            "measured_amplitude_nm": 236.5501827656857,
+            "amplitude_ratio": 0.4732649806955092,
+            "phase_lag_deg": 96.25515734408907,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 3,
+          "mode": "pid",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-40Hz/20261022T184219.490877Z-pid-587d6ce9",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 407.1604085176729,
+            "mean_error_nm": 0.044131469726680965,
+            "peak_error_nm": 577.8186493020039,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260856276584,
+            "measured_amplitude_nm": 236.5501827656857,
+            "amplitude_ratio": 0.4732649806955092,
+            "phase_lag_deg": 96.25515734408907,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 3,
+          "mode": "preview",
+          "path": "reports/moku-simulation-2026-10-23/experiments/baseline-40Hz/20261022T184219.650674Z-preview-c665c645",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 29.624489573641114,
+            "mean_error_nm": -12.042910766601377,
+            "peak_error_nm": 51.95554366165834,
+            "saturation_ratio": 0.32,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260856276584,
+            "measured_amplitude_nm": 494.49760688090703,
+            "amplitude_ratio": 0.9893393344205712,
+            "phase_lag_deg": 4.271296951392628,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": true
+          }
+        }
+      ],
+      "aggregate": {
+        "pid": {
+          "rmse_nm": {
+            "mean": 407.1604085176729,
+            "std": 0.0,
+            "min": 407.1604085176729,
+            "max": 407.1604085176729
+          },
+          "amplitude_ratio": {
+            "mean": 0.4732649806955092,
+            "std": 0.0,
+            "min": 0.4732649806955092,
+            "max": 0.4732649806955092
+          },
+          "phase_lag_deg": {
+            "mean": 96.25515734408907,
+            "std": 0.0,
+            "min": 96.25515734408907,
+            "max": 96.25515734408907
+          },
+          "saturation_ratio": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        },
+        "preview": {
+          "rmse_nm": {
+            "mean": 29.624489573641114,
+            "std": 0.0,
+            "min": 29.624489573641114,
+            "max": 29.624489573641114
+          },
+          "amplitude_ratio": {
+            "mean": 0.9893393344205711,
+            "std": 1.1102230246251565e-16,
+            "min": 0.9893393344205712,
+            "max": 0.9893393344205712
+          },
+          "phase_lag_deg": {
+            "mean": 4.271296951392628,
+            "std": 0.0,
+            "min": 4.271296951392628,
+            "max": 4.271296951392628
+          },
+          "saturation_ratio": {
+            "mean": 0.32,
+            "std": 0.0,
+            "min": 0.32,
+            "max": 0.32
+          }
+        }
+      },
+      "hardware_target_verified": false
+    },
+    "gain-minus20-tau-plus50": {
+      "summary_path": "reports/moku-simulation-2026-10-23/experiments/gain-minus20-tau-plus50/ab-cc1c6e15.json",
+      "simulation": true,
+      "runs": [
+        {
+          "repeat": 1,
+          "mode": "pid",
+          "path": "reports/moku-simulation-2026-10-23/experiments/gain-minus20-tau-plus50/20261022T184219.825077Z-pid-b382c944",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 377.5798312367004,
+            "mean_error_nm": 0.037369689941469005,
+            "peak_error_nm": 535.5939779494752,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260852702446,
+            "measured_amplitude_nm": 255.0809653526856,
+            "amplitude_ratio": 0.5103394417975787,
+            "phase_lag_deg": 83.29478476362317,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 1,
+          "mode": "preview",
+          "path": "reports/moku-simulation-2026-10-23/experiments/gain-minus20-tau-plus50/20261022T184219.984100Z-preview-d8fdf023",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 176.0505573258319,
+            "mean_error_nm": 0.00789093017587038,
+            "peak_error_nm": 247.32420692912365,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260852702446,
+            "measured_amplitude_nm": 330.2321184918286,
+            "amplitude_ratio": 0.6606940458365225,
+            "phase_lag_deg": 25.92580297981246,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 2,
+          "mode": "preview",
+          "path": "reports/moku-simulation-2026-10-23/experiments/gain-minus20-tau-plus50/20261022T184220.164114Z-preview-ce3633de",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 176.0505573258319,
+            "mean_error_nm": 0.00789093017587038,
+            "peak_error_nm": 247.32420692912365,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260852702446,
+            "measured_amplitude_nm": 330.2321184918286,
+            "amplitude_ratio": 0.6606940458365225,
+            "phase_lag_deg": 25.92580297981246,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 2,
+          "mode": "pid",
+          "path": "reports/moku-simulation-2026-10-23/experiments/gain-minus20-tau-plus50/20261022T184220.348637Z-pid-0e36d47d",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 377.5798312367004,
+            "mean_error_nm": 0.037369689941469005,
+            "peak_error_nm": 535.5939779494752,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260852702446,
+            "measured_amplitude_nm": 255.0809653526856,
+            "amplitude_ratio": 0.5103394417975787,
+            "phase_lag_deg": 83.29478476362317,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 3,
+          "mode": "pid",
+          "path": "reports/moku-simulation-2026-10-23/experiments/gain-minus20-tau-plus50/20261022T184220.508746Z-pid-db32744e",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 377.5798312367004,
+            "mean_error_nm": 0.037369689941469005,
+            "peak_error_nm": 535.5939779494752,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260852702446,
+            "measured_amplitude_nm": 255.0809653526856,
+            "amplitude_ratio": 0.5103394417975787,
+            "phase_lag_deg": 83.29478476362317,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 3,
+          "mode": "preview",
+          "path": "reports/moku-simulation-2026-10-23/experiments/gain-minus20-tau-plus50/20261022T184220.667306Z-preview-5ab23a31",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 176.0505573258319,
+            "mean_error_nm": 0.00789093017587038,
+            "peak_error_nm": 247.32420692912365,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260852702446,
+            "measured_amplitude_nm": 330.2321184918286,
+            "amplitude_ratio": 0.6606940458365225,
+            "phase_lag_deg": 25.92580297981246,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        }
+      ],
+      "aggregate": {
+        "pid": {
+          "rmse_nm": {
+            "mean": 377.5798312367004,
+            "std": 0.0,
+            "min": 377.5798312367004,
+            "max": 377.5798312367004
+          },
+          "amplitude_ratio": {
+            "mean": 0.5103394417975787,
+            "std": 0.0,
+            "min": 0.5103394417975787,
+            "max": 0.5103394417975787
+          },
+          "phase_lag_deg": {
+            "mean": 83.29478476362317,
+            "std": 0.0,
+            "min": 83.29478476362317,
+            "max": 83.29478476362317
+          },
+          "saturation_ratio": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        },
+        "preview": {
+          "rmse_nm": {
+            "mean": 176.05055732583187,
+            "std": 2.842170943040401e-14,
+            "min": 176.0505573258319,
+            "max": 176.0505573258319
+          },
+          "amplitude_ratio": {
+            "mean": 0.6606940458365225,
+            "std": 0.0,
+            "min": 0.6606940458365225,
+            "max": 0.6606940458365225
+          },
+          "phase_lag_deg": {
+            "mean": 25.92580297981246,
+            "std": 0.0,
+            "min": 25.92580297981246,
+            "max": 25.92580297981246
+          },
+          "saturation_ratio": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        }
+      },
+      "hardware_target_verified": false
+    },
+    "extra-delay-3ms": {
+      "summary_path": "reports/moku-simulation-2026-10-23/experiments/extra-delay-3ms/ab-c45f40be.json",
+      "simulation": true,
+      "runs": [
+        {
+          "repeat": 1,
+          "mode": "pid",
+          "path": "reports/moku-simulation-2026-10-23/experiments/extra-delay-3ms/20261022T184220.847069Z-pid-b0688930",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 401.66195215378673,
+            "mean_error_nm": 0.039171447753848954,
+            "peak_error_nm": 566.1334623427617,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260852702446,
+            "measured_amplitude_nm": 432.82408654515774,
+            "amplitude_ratio": 0.8659493757936615,
+            "phase_lag_deg": 74.65345046512135,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 1,
+          "mode": "preview",
+          "path": "reports/moku-simulation-2026-10-23/experiments/extra-delay-3ms/20261022T184221.004155Z-preview-16b58483",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 262.117798634143,
+            "mean_error_nm": 0.007640686035195359,
+            "peak_error_nm": 375.3467493685944,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260852702446,
+            "measured_amplitude_nm": 661.974499455624,
+            "amplitude_ratio": 1.3244096676101038,
+            "phase_lag_deg": 33.68177516589242,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 2,
+          "mode": "preview",
+          "path": "reports/moku-simulation-2026-10-23/experiments/extra-delay-3ms/20261022T184221.178444Z-preview-4921b731",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 262.117798634143,
+            "mean_error_nm": 0.007640686035195359,
+            "peak_error_nm": 375.3467493685944,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260852702446,
+            "measured_amplitude_nm": 661.974499455624,
+            "amplitude_ratio": 1.3244096676101038,
+            "phase_lag_deg": 33.68177516589242,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 2,
+          "mode": "pid",
+          "path": "reports/moku-simulation-2026-10-23/experiments/extra-delay-3ms/20261022T184221.353298Z-pid-dc5242a8",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 401.66195215378673,
+            "mean_error_nm": 0.039171447753848954,
+            "peak_error_nm": 566.1334623427617,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260852702446,
+            "measured_amplitude_nm": 432.82408654515774,
+            "amplitude_ratio": 0.8659493757936615,
+            "phase_lag_deg": 74.65345046512135,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 3,
+          "mode": "pid",
+          "path": "reports/moku-simulation-2026-10-23/experiments/extra-delay-3ms/20261022T184221.509723Z-pid-4d9cfd55",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 401.66195215378673,
+            "mean_error_nm": 0.039171447753848954,
+            "peak_error_nm": 566.1334623427617,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260852702446,
+            "measured_amplitude_nm": 432.82408654515774,
+            "amplitude_ratio": 0.8659493757936615,
+            "phase_lag_deg": 74.65345046512135,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 3,
+          "mode": "preview",
+          "path": "reports/moku-simulation-2026-10-23/experiments/extra-delay-3ms/20261022T184221.676152Z-preview-5947cfef",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 262.117798634143,
+            "mean_error_nm": 0.007640686035195359,
+            "peak_error_nm": 375.3467493685944,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260852702446,
+            "measured_amplitude_nm": 661.974499455624,
+            "amplitude_ratio": 1.3244096676101038,
+            "phase_lag_deg": 33.68177516589242,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        }
+      ],
+      "aggregate": {
+        "pid": {
+          "rmse_nm": {
+            "mean": 401.6619521537867,
+            "std": 5.684341886080802e-14,
+            "min": 401.66195215378673,
+            "max": 401.66195215378673
+          },
+          "amplitude_ratio": {
+            "mean": 0.8659493757936615,
+            "std": 0.0,
+            "min": 0.8659493757936615,
+            "max": 0.8659493757936615
+          },
+          "phase_lag_deg": {
+            "mean": 74.65345046512135,
+            "std": 0.0,
+            "min": 74.65345046512135,
+            "max": 74.65345046512135
+          },
+          "saturation_ratio": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        },
+        "preview": {
+          "rmse_nm": {
+            "mean": 262.117798634143,
+            "std": 0.0,
+            "min": 262.117798634143,
+            "max": 262.117798634143
+          },
+          "amplitude_ratio": {
+            "mean": 1.3244096676101038,
+            "std": 0.0,
+            "min": 1.3244096676101038,
+            "max": 1.3244096676101038
+          },
+          "phase_lag_deg": {
+            "mean": 33.68177516589242,
+            "std": 0.0,
+            "min": 33.68177516589242,
+            "max": 33.68177516589242
+          },
+          "saturation_ratio": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        }
+      },
+      "hardware_target_verified": false
+    },
+    "zero-delay-diagnostic": {
+      "summary_path": "reports/moku-simulation-2026-10-23/experiments/zero-delay-diagnostic/ab-f9952b3f.json",
+      "simulation": true,
+      "runs": [
+        {
+          "repeat": 1,
+          "mode": "pid",
+          "path": "reports/moku-simulation-2026-10-23/experiments/zero-delay-diagnostic/20261022T184221.850834Z-pid-2194496d",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 272.0140979790496,
+            "mean_error_nm": 0.037419738769663126,
+            "peak_error_nm": 381.6883710885397,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260852702446,
+            "measured_amplitude_nm": 293.10581919449305,
+            "amplitude_ratio": 0.5864156110140137,
+            "phase_lag_deg": 50.14581987338602,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 1,
+          "mode": "preview",
+          "path": "reports/moku-simulation-2026-10-23/experiments/zero-delay-diagnostic/20261022T184222.007183Z-preview-866be57c",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 0.010660517962317113,
+            "mean_error_nm": 0.01064361572268126,
+            "peak_error_nm": 0.011781992343912862,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260852702446,
+            "measured_amplitude_nm": 499.8253023597359,
+            "amplitude_ratio": 0.9999984336341543,
+            "phase_lag_deg": -4.633744623561142e-06,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": true
+          }
+        },
+        {
+          "repeat": 2,
+          "mode": "preview",
+          "path": "reports/moku-simulation-2026-10-23/experiments/zero-delay-diagnostic/20261022T184222.181952Z-preview-d0c8cbcc",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 0.010660517962317113,
+            "mean_error_nm": 0.01064361572268126,
+            "peak_error_nm": 0.011781992343912862,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260852702446,
+            "measured_amplitude_nm": 499.8253023597359,
+            "amplitude_ratio": 0.9999984336341543,
+            "phase_lag_deg": -4.633744623561142e-06,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": true
+          }
+        },
+        {
+          "repeat": 2,
+          "mode": "pid",
+          "path": "reports/moku-simulation-2026-10-23/experiments/zero-delay-diagnostic/20261022T184222.355582Z-pid-e185befd",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 272.0140979790496,
+            "mean_error_nm": 0.037419738769663126,
+            "peak_error_nm": 381.6883710885397,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260852702446,
+            "measured_amplitude_nm": 293.10581919449305,
+            "amplitude_ratio": 0.5864156110140137,
+            "phase_lag_deg": 50.14581987338602,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 3,
+          "mode": "pid",
+          "path": "reports/moku-simulation-2026-10-23/experiments/zero-delay-diagnostic/20261022T184222.517364Z-pid-699b99f7",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 272.0140979790496,
+            "mean_error_nm": 0.037419738769663126,
+            "peak_error_nm": 381.6883710885397,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260852702446,
+            "measured_amplitude_nm": 293.10581919449305,
+            "amplitude_ratio": 0.5864156110140137,
+            "phase_lag_deg": 50.14581987338602,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": false
+          }
+        },
+        {
+          "repeat": 3,
+          "mode": "preview",
+          "path": "reports/moku-simulation-2026-10-23/experiments/zero-delay-diagnostic/20261022T184222.683104Z-preview-1ebe4ebb",
+          "reason": "completed",
+          "metrics": {
+            "samples": 8000,
+            "simulation": true,
+            "eligible_for_acceptance": true,
+            "hardware_target_verified": false,
+            "rmse_nm": 0.010660517962317113,
+            "mean_error_nm": 0.01064361572268126,
+            "peak_error_nm": 0.011781992343912862,
+            "saturation_ratio": 0.0,
+            "continuous": true,
+            "coherent": true,
+            "complete": true,
+            "faulted": false,
+            "reference_amplitude_nm": 499.8260852702446,
+            "measured_amplitude_nm": 499.8253023597359,
+            "amplitude_ratio": 0.9999984336341543,
+            "phase_lag_deg": -4.633744623561142e-06,
+            "reason": "Full-rate simulation; physical hardware unverified",
+            "simulation_target_met": true
+          }
+        }
+      ],
+      "aggregate": {
+        "pid": {
+          "rmse_nm": {
+            "mean": 272.0140979790496,
+            "std": 0.0,
+            "min": 272.0140979790496,
+            "max": 272.0140979790496
+          },
+          "amplitude_ratio": {
+            "mean": 0.5864156110140137,
+            "std": 0.0,
+            "min": 0.5864156110140137,
+            "max": 0.5864156110140137
+          },
+          "phase_lag_deg": {
+            "mean": 50.14581987338602,
+            "std": 0.0,
+            "min": 50.14581987338602,
+            "max": 50.14581987338602
+          },
+          "saturation_ratio": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        },
+        "preview": {
+          "rmse_nm": {
+            "mean": 0.010660517962317114,
+            "std": 1.734723475976807e-18,
+            "min": 0.010660517962317113,
+            "max": 0.010660517962317113
+          },
+          "amplitude_ratio": {
+            "mean": 0.9999984336341544,
+            "std": 1.1102230246251565e-16,
+            "min": 0.9999984336341543,
+            "max": 0.9999984336341543
+          },
+          "phase_lag_deg": {
+            "mean": -4.633744623561142e-06,
+            "std": 0.0,
+            "min": -4.633744623561142e-06,
+            "max": -4.633744623561142e-06
+          },
+          "saturation_ratio": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        }
+      },
+      "hardware_target_verified": false
+    }
+  }
+}

@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['app.py'],
+    ['legacy_app.py'],
     pathex=[],
     binaries=[],
     datas=[],

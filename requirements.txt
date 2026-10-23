@@ -1,13 +1,6 @@
-# GUI. Widgets that take a `bootstyle` are constructed as tb.* rather than
-# ttk.*, so the code works on both the 1.x and 2.x series.
-ttkbootstrap>=1.10
-paho-mqtt
-matplotlib
-pyserial
-pyinstaller
-moku
-
-# Closed-loop control (control.py): scipy.linalg.expm discretises the
-# disturbance observer, scipy.optimize.curve_fit does the FOPDT step fit.
-numpy
-scipy
+# Cross-platform host runtime, Python 3.13.
+PySide6>=6.8,<7
+pyqtgraph>=0.13.7,<1
+moku>=4.3,<5
+numpy>=2.1,<3
+scipy>=1.15,<2

@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "simulation": false,
+  "device": {"address": null, "hardware": "mokugo", "slots": 3},
+  "inputs": {
+    "standard": null, "receiver": null, "carrier_hz": null,
+    "level_vpp": null, "impedance": "1MOhm", "coupling": "AC",
+    "range": "10Vpp", "pll_bandwidth": "1kHz",
+    "phase_scale_v_per_cycle": null, "phase_period_counts": null,
+    "signal_threshold_counts": null, "signal_timeout_s": null
+  },
+  "calibration": {"nm_per_cycle": null, "direction": null},
+  "drive": {
+    "piezo_model": null, "capacitance_f": null, "rated_voltage_v": null,
+    "minimum_v": null, "maximum_v": null, "safe_v": null,
+    "slew_v_per_s": null, "max_abs_error_nm": null,
+    "max_current_a": null, "counts_per_volt": 6550.4
+  },
+  "model": {"gain_nm_per_v": null, "tau_s": null, "plant_delay_s": null, "sensor_delay_s": null},
+  "controller": {"rate_hz": 1000, "kp": null, "ki": null, "kd": null, "d_filter_n": null, "observer_w0": null},
+  "trajectory": {"waveform": "sine", "frequency_hz": 20.0, "amplitude_nm": 500.0, "offset_nm": null,
+    "phase_deg": 0.0, "duty_pct": 50.0, "symmetry_pct": 50.0, "pulse_width_s": 0.01,
+    "edge_time_s": 0.0, "noise_seed": 0},
+  "disturbance": {"enabled": false, "waveform": "step", "amplitude_v": 0.0,
+    "frequency_hz": 1.0, "start_s": 0.0, "duration_s": 1.0, "phase_deg": 0.0, "seed": 0},
+  "simulation_options": {"measurement_noise_nm": 0.0, "noise_seed": 0,
+    "hysteresis_enabled": false, "hysteresis_a": 1.0, "hysteresis_beta": 0.5,
+    "hysteresis_gamma": 0.5, "hysteresis_nm_per_v": 0.0, "dead_band_v": 0.0},
+  "experiment": {"duration_s": 10.0, "settle_s": 2.0, "repeats": 3, "target_rmse_nm": 50.0},
+  "validation": {"signal_conditioning": false, "phase_scale": false, "phase_wrap": false, "latency": false, "loss_of_lock": false, "polarity": false, "direct_drive": false, "independent_phase_channels": false},
+  "fpga": {"bitstream_path": null, "manifest_path": null}
+}

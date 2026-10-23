@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['app.py'],
+    ['legacy_app.py'],
     pathex=[],
     binaries=[],
     datas=[('moku_data', 'moku_data'), ('umd_gui', 'umd_gui'), ('broker_mqtt', 'broker_mqtt')],
