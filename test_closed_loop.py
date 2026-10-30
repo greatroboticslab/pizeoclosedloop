@@ -56,13 +56,14 @@ class SimRig:
     and the next measurement read reflects it.
     """
 
-    def __init__(self, noise_nm=2.0, hysteresis=False, stale=False):
+    def __init__(self, noise_nm=2.0, hysteresis=False, stale=False, bias_nm=0.0):
         self.plant = SimulatedPlant(MODEL, noise_nm=noise_nm,
                                     bw_enable=hysteresis, bw_D=100.0)
         self.plant.reset(DT)
         self.y = 0.0
         self.ts = time.time()
         self.stale = stale
+        self.bias_nm = float(bias_nm)
         self.began = self.ended = 0
         self.last_v = None
 
@@ -80,7 +81,7 @@ class SimRig:
     def read_latest(self):
         if self.stale:
             return (time.time() - 10.0, 500.0)
-        return (self.ts, self.y)
+        return (self.ts, self.y + self.bias_nm)
 
 
 def make_frame(root, tmp_path, algo):
@@ -116,6 +117,31 @@ def run_loop(root, f, rig, seconds):
     return dict(f._live)
 
 
+def assert_share_columns(csv_path, algo):
+    """Term volts reconstruct the clipped command, and their shares sum to 100."""
+    from closed_loop import LOG_COLUMNS
+
+    rows = list(csv.reader(open(csv_path, encoding="utf-8")))
+    assert rows[1] == LOG_COLUMNS
+    idx = {name: i for i, name in enumerate(rows[1])}
+    if algo == "Software PID":
+        present = ("p_pct", "i_pct", "d_pct")
+        absent = ("ff_pct", "dist_pct")
+    else:
+        present = ("ff_pct", "dist_pct")
+        absent = ("p_pct", "i_pct", "d_pct")
+
+    for row in rows[2:]:
+        for name in absent:
+            assert row[idx[name]] == ""
+        vals = [float(row[idx[name]]) for name in present]
+        magnitude = sum(abs(v) for v in vals)
+        assert magnitude == pytest.approx(100.0, abs=0.05) or magnitude == pytest.approx(0.0)
+        raw = sum(float(row[idx[name.replace("_pct", "_V")]]) for name in present)
+        applied = float(row[idx["v_V"]])
+        assert min(max(raw, 0.0), MODEL.v_max) == pytest.approx(applied, abs=1e-4)
+
+
 def settled_rmse(csv_path, frac=0.5):
     rows = list(csv.reader(open(csv_path)))[2:]
     e = np.array([float(r[3]) for r in rows])
@@ -130,11 +156,31 @@ def test_loop_runs_and_releases_hardware(root, tmp_path, algo):
     live = run_loop(root, f, rig, 4.0)
 
     assert live["n"] > 50, f"only {live.get('n')} ticks"
+    logs = glob.glob(str(tmp_path / "*.csv"))
+    assert len(logs) == 1
+    assert_share_columns(logs[0], algo)
     assert rig.began == 1 and rig.ended == 1, "hardware hand-off unbalanced"
     assert rig.last_v == 0.0, "output was not zeroed on exit"
     assert f.status_var.get().startswith("Status: finished."), f.status_var.get()
     assert str(f._start_btn["state"]) == "normal"
     assert str(f._stop_btn["state"]) == "disabled"
+
+
+@pytest.mark.parametrize("bias_nm", [0.0, -5.34762517570e11, 6.0507670569e10])
+def test_setpoint_moves_when_the_rest_reading_is_a_huge_count(root, tmp_path, bias_nm):
+    """
+    The interferometer count at 0 V is an absolute position, not displacement.
+    A negative count used to be subtracted from the sine, so the plotted
+    setpoint sat near 1e11 nm and looked frozen while the command pinned at 5 V.
+    """
+    f = make_frame(root, tmp_path, "Preview + ADRC")
+    run_loop(root, f, SimRig(bias_nm=bias_nm), 4.0)
+
+    logs = glob.glob(str(tmp_path / "*.csv"))
+    rows = list(csv.reader(open(logs[0], encoding="utf-8")))
+    r = np.array([float(row[1]) for row in rows[2:]])
+    assert r.max() - r.min() > 200.0, (r.min(), r.max())
+    assert abs(r).max() < 5000.0
 
 
 def test_csv_log_is_well_formed_and_voltage_stays_in_bounds(root, tmp_path):
@@ -143,10 +189,11 @@ def test_csv_log_is_well_formed_and_voltage_stays_in_bounds(root, tmp_path):
 
     logs = glob.glob(str(tmp_path / "*.csv"))
     assert len(logs) == 1
-    rows = list(csv.reader(open(logs[0])))
+    rows = list(csv.reader(open(logs[0], encoding="utf-8")))
     assert rows[0][0].startswith("# algorithm=Preview + ADRC")
-    assert rows[1] == ["t_s", "r_nm", "y_nm", "e_nm", "v_V", "dt_meas_s", "res1_nm"]
+    assert "shares=signed percent of sum(|term V|) before clip" in rows[0]
     assert len(rows) - 2 > 50
+    assert_share_columns(logs[0], "Preview + ADRC")
 
     v = [float(r[4]) for r in rows[2:]]
     assert all(0.0 <= x <= MODEL.v_max for x in v), "voltage escaped [0, v_max]"

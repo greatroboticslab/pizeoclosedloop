@@ -842,61 +842,157 @@ Public Class MainForm
         MFLoaded = 1
     End Sub
 
-    Private Sub Comport_Click(sender As Object, e As EventArgs)
-        ' extract COM port name
-        Dim comportstrting As String = sender.ToString
-        Dim a() As String = Regex.Split(comportstrting, "Text: ")
-        'MsgBox(a(1))
-        ' open COM port
-        If SerialPort1.IsOpen = False Then
-            Try ' Interferometer Port Open
-                SerialPort1.Close()
-            Catch ex As Exception
-                ' nothing
-            End Try
-            SerialPort1.PortName = a(1)
-            SerialPort1.BaudRate = 115200
-            SerialPort1.Parity = Parity.None
-            SerialPort1.StopBits = StopBits.One
-            SerialPort1.DataBits = 8
-            SerialPort1.Handshake = Handshake.None
-            SerialPort1.NewLine = vbCr
-            SerialPort1.DtrEnable = True 'important
-            SerialPort1.RtsEnable = True 'important
-            Try
-                SerialPort1.Open()
-            Catch ex As Exception
-                MsgBox(ex.ToString)
-            End Try
+    ' Nonzero while SerialPort1 is being closed. DataReceived uses Control.Invoke,
+    ' and SerialPort.Close waits for that handler, so closing on the UI thread deadlocks.
+    Private portClosing As Integer
 
-            If TestmodeFlag = 0 Then
-                needsInitialZero = 1 ' make sure to zero out the reference system
+    Private Function PortIsOpen(port As SerialPort) As Boolean
+        Try
+            Return port.IsOpen
+        Catch
+            Return False
+        End Try
+    End Function
+
+    Private Sub ApplyPortSettings(port As SerialPort, portName As String)
+        port.PortName = portName
+        port.BaudRate = 115200
+        port.Parity = Parity.None
+        port.StopBits = StopBits.One
+        port.DataBits = 8
+        port.Handshake = Handshake.None
+        port.NewLine = vbCr
+        port.DtrEnable = True 'important
+        port.RtsEnable = True 'important
+    End Sub
+
+    ' Close off the UI thread and keep pumping messages so an in-flight DataReceived
+    ' Invoke can finish. Returns False if the port is still open afterwards.
+    Private Function ClosePortSafely(port As SerialPort) As Boolean
+        If Not PortIsOpen(port) Then
+            Return True
+        End If
+        Interlocked.Exchange(portClosing, 1)
+        Try
+            ' Discard and Close take the serial-stream lock. Do that off the UI thread:
+            ' DataReceived may be blocked in Control.Invoke, and taking the lock here
+            ' would deadlock with it. DoEvents below lets that Invoke finish.
+            Dim closer As New Thread(
+                Sub()
+                    Try
+                        Try
+                            port.DiscardInBuffer()
+                            port.DiscardOutBuffer()
+                            port.DtrEnable = False
+                            port.RtsEnable = False
+                        Catch
+                        End Try
+                        port.Close()
+                    Catch
+                    End Try
+                End Sub)
+            closer.IsBackground = True
+            closer.Start()
+            Dim waited As Integer = 0
+            Do While closer.IsAlive AndAlso waited < 3000
+                Application.DoEvents()
+                Thread.Sleep(15)
+                waited += 15
+            Loop
+            If closer.IsAlive Then
+                Return False
             End If
-        Else
-            Try ' Monitor Port Open
+            closer.Join()
+            Return Not PortIsOpen(port)
+        Finally
+            Interlocked.Exchange(portClosing, 0)
+        End Try
+    End Function
+
+    Private Function SelectedPortName(sender As Object) As String
+        Dim item As MenuItem = TryCast(sender, MenuItem)
+        If item IsNot Nothing Then
+            Return item.Text.Trim()
+        End If
+        Dim parts() As String = Regex.Split(sender.ToString(), "Text: ")
+        If parts.Length < 2 Then
+            Return ""
+        End If
+        Return parts(1).Trim()
+    End Function
+
+    Private Sub OpenInterferometer(portName As String)
+        Try
+            If PortIsOpen(SerialPort1) Then
+                SerialPort1.Close()
+            End If
+        Catch
+        End Try
+        Try
+            ApplyPortSettings(SerialPort1, portName)
+            SerialPort1.Open()
+        Catch ex As Exception
+            MsgBox(ex.ToString)
+            Return
+        End Try
+        If TestmodeFlag = 0 Then
+            needsInitialZero = 1 ' make sure to zero out the reference system
+        End If
+    End Sub
+
+    Private Sub ReopenInterferometer(portName As String)
+        If Not ClosePortSafely(SerialPort1) Then
+            MsgBox("Could not close " & portName & ". Unplug the USB cable or restart uMD_GUI, then select the port again.")
+            Return
+        End If
+        ' Windows often still holds the COM handle for a moment after Close.
+        Thread.Sleep(200)
+        OpenInterferometer(portName)
+    End Sub
+
+    Private Sub OpenMonitor(portName As String)
+        Try
+            If PortIsOpen(SerialPort2) Then
                 SerialPort2.Close()
-            Catch ex As Exception
-                ' nothing
-            End Try
-            SerialPort2.PortName = a(1)
-            SerialPort2.BaudRate = 115200
-            SerialPort2.Parity = Parity.None
-            SerialPort2.StopBits = StopBits.One
-            SerialPort2.DataBits = 8
-            SerialPort2.Handshake = Handshake.None
-            SerialPort2.NewLine = vbCr
-            SerialPort2.DtrEnable = True 'important
-            SerialPort2.RtsEnable = True 'important
-            Try
-                SerialPort2.Open()
-            Catch ex As Exception
-                MsgBox(ex.ToString)
-            End Try
-            Monitor_Tick.Visible = True
+            End If
+        Catch
+        End Try
+        Try
+            ApplyPortSettings(SerialPort2, portName)
+            SerialPort2.Open()
+        Catch ex As Exception
+            MsgBox(ex.ToString)
+            Return
+        End Try
+        Monitor_Tick.Visible = True
+    End Sub
+
+    Private Sub Comport_Click(sender As Object, e As EventArgs)
+        Dim portName As String = SelectedPortName(sender)
+        If portName.Length = 0 Then
+            Return
+        End If
+
+        ' First selection opens the interferometer. Selecting that same port again
+        ' disconnects and reconnects it. A different port, once the interferometer
+        ' is open, is the monitor output.
+        If PortIsOpen(SerialPort1) AndAlso
+            String.Equals(SerialPort1.PortName, portName, StringComparison.OrdinalIgnoreCase) Then
+            ReopenInterferometer(portName)
+            Return
+        End If
+
+        If Not PortIsOpen(SerialPort1) Then
+            OpenInterferometer(portName)
+        Else
+            OpenMonitor(portName)
         End If
     End Sub
 
     Private Sub DataReceivedHandler(sender As Object, e As SerialDataReceivedEventArgs) Handles SerialPort1.DataReceived
+        If Thread.VolatileRead(portClosing) <> 0 Then
+            Return
+        End If
         Try
             If SerialPort1.IsOpen Then
                 'Dim incomingData As String
@@ -923,7 +1019,9 @@ Public Class MainForm
                 End If
             End If
         Catch ex As Exception
-            MsgBox(ex.ToString)
+            If Thread.VolatileRead(portClosing) = 0 Then
+                MsgBox(ex.ToString)
+            End If
         End Try
     End Sub
     ''' <summary>
@@ -1129,10 +1227,19 @@ Public Class MainForm
 
 
                             Dim D As Long = CLng(AxisData(ax, 2)) ' D: values(2)
-                            Dim N As Long = CLng(AxisData(ax, 5)) ' N: values(5)
+                            Dim P As Long = CLng(AxisData(ax, 4)) ' P: phase word, 1/256 of a fringe
+                            Dim N As Long = CLng(values(5)) ' N: values(5). AxisData column 5 is never filled.
 
-                            ' Exact same string as the log file
-                            Dim payload As String = "D:" & D.ToString() & " N:" & N.ToString() 'format D: 12345667 N: 8901234
+                            ' Apply a valid phase word even when the Interpolation
+                            ' checkbox is off, so the closed loop can move inside
+                            ' a fringe. The on-screen trace still follows that checkbox.
+                            Dim phaseFrac As Double = 0
+                            If (P And &H7E00) = 0 OrElse P < 0 Then
+                                phaseFrac = CDbl(P) / 256.0
+                            End If
+                            Dim yNm As Double = (CDbl(D) - phaseFrac) * Wavelength / 2.0 - CurrentValueCorrection
+                            Dim yText As String = yNm.ToString("0.0000", System.Globalization.CultureInfo.InvariantCulture)
+                            Dim payload As String = "D:" & D.ToString() & " P:" & P.ToString() & " N:" & N.ToString() & " Y:" & yText
 
                             Await _bridge.PublishAsync(payload)
 

@@ -8,6 +8,8 @@ Closes a displacement loop entirely in Python:
                                    control.py
                                         |
                           MokuWaveformFrame.set_dc_voltage()
+                          or, for a sine, set_smooth_sine() so the FPGA
+                          keeps moving the wave between corrections
 
 Two algorithms are selectable at runtime and share this identical plumbing, so
 switching between them changes only the control law:
@@ -45,6 +47,8 @@ from matplotlib.figure import Figure
 import app_settings
 from control import (
     WAVEFORMS,
+    FRINGE_NM,
+    MeasurementGuard,
     PlantModel,
     PreviewADRC,
     SoftwarePID,
@@ -52,10 +56,15 @@ from control import (
     DEFAULT_TAU_S,
     DEFAULT_THETA_PLANT,
     TrajectoryGenerator,
+    contribution_shares,
     fit_fopdt_step,
     imc_tune,
     lift_reference,
+    choose_fringe_step,
+    command_on_wave,
     plant_fit_usable,
+    setpoint_span_nm,
+    whole_fringe_nm,
 )
 from process_raw import get_downloads_dir, select_folder_native
 
@@ -116,6 +125,54 @@ PINNED_ABORT_S = 1.0
 # Hard ceiling on the v_max a user may type, independent of the piezo model.
 V_MAX_CEILING = 10.0
 
+# Terms that can appear in a command. A given law only fills the ones it uses:
+# Software PID writes p/i/d (and ff when the plant settles inside one tick);
+# Preview + ADRC writes ff and dist. Shares are signed percents of the sum of
+# absolute term voltages, taken before the output clip, so the magnitudes of
+# one row add to 100.
+CONTRIB_KEYS = ("ff", "p", "i", "d", "dist")
+CONTRIB_LABELS = {
+    "ff": "feedforward",
+    "p": "proportional",
+    "i": "integral",
+    "d": "derivative",
+    "dist": "disturbance",
+}
+CONTRIB_SHORT = {"ff": "FF", "p": "P", "i": "I", "d": "D", "dist": "dist"}
+CONTRIB_COLORS = {
+    "ff": "#ff7f0e",
+    "p": "#1f77b4",
+    "i": "#2ca02c",
+    "d": "#d62728",
+    "dist": "#9467bd",
+}
+LOG_COLUMNS = [
+    "t_s", "r_nm", "y_nm", "e_nm", "v_V", "dt_meas_s", "res1_nm", "y_raw_nm",
+    "ff_V", "p_V", "i_V", "d_V", "dist_V",
+    "ff_pct", "p_pct", "i_pct", "d_pct", "dist_pct",
+]
+
+
+def format_shares(shares: dict) -> str:
+    """One status-line reading of the latest command split."""
+    return "  ".join(
+        f"{CONTRIB_SHORT[key]} {shares[key]:+.0f}%"
+        for key in CONTRIB_KEYS if key in shares
+    )
+
+
+def contrib_cells(terms: dict, shares: dict) -> list[str]:
+    """CSV cells for term volts, then term shares. Absent terms stay blank."""
+    volts, pcts = [], []
+    for key in CONTRIB_KEYS:
+        if key in terms:
+            volts.append(f"{terms[key]:.6f}")
+            pcts.append(f"{shares[key]:.2f}")
+        else:
+            volts.append("")
+            pcts.append("")
+    return volts + pcts
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Live plot
@@ -123,12 +180,15 @@ V_MAX_CEILING = 10.0
 
 class LivePlot:
     """
-    Three stacked axes: tracking (r vs y), error, and command voltage.
+    Four stacked axes: tracking (r vs y), error, command voltage, and the
+    share of that command coming from each term.
 
     A control loop cannot be tuned from a status line -- the shape of the error
     is what tells you whether a gain is too low, too high, or the wrong kind of
     correction entirely. For Preview+ADRC the disturbance estimate res1 is
-    drawn on the error axis too, since that is the signal doing the work.
+    drawn on the error axis too, since that is the signal doing the work. The
+    bottom axis splits the unsaturated request into signed percents (magnitudes
+    add to 100) so a term fighting the others is visible on its own.
 
     Live updates rewrite each line's data rather than clearing and replotting.
     The clear-and-replot version measurably starved the control thread: a
@@ -142,10 +202,15 @@ class LivePlot:
     MAX_POINTS = 800
 
     def __init__(self, parent):
-        self.fig = Figure(figsize=(6.4, 6.6), dpi=100, layout="constrained")
-        self.ax_track = self.fig.add_subplot(3, 1, 1)
-        self.ax_err = self.fig.add_subplot(3, 1, 2, sharex=self.ax_track)
-        self.ax_volt = self.fig.add_subplot(3, 1, 3, sharex=self.ax_track)
+        # Constrained layout is recomputed on every draw, and a live redraw
+        # that holds the GIL for tens of milliseconds delays the next control
+        # tick. Margins are fixed instead so set_data + draw_idle stays cheap.
+        self.fig = Figure(figsize=(6.4, 8.0), dpi=100)
+        self.fig.subplots_adjust(left=0.16, right=0.98, top=0.95, bottom=0.07, hspace=0.28)
+        self.ax_track = self.fig.add_subplot(4, 1, 1)
+        self.ax_err = self.fig.add_subplot(4, 1, 2, sharex=self.ax_track)
+        self.ax_volt = self.fig.add_subplot(4, 1, 3, sharex=self.ax_track)
+        self.ax_share = self.fig.add_subplot(4, 1, 4, sharex=self.ax_track)
 
         self.canvas = FigureCanvasTkAgg(self.fig, master=parent)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
@@ -155,22 +220,28 @@ class LivePlot:
         self._style_axes()
         self.clear()
 
+    def _axes(self):
+        return (self.ax_track, self.ax_err, self.ax_volt, self.ax_share)
+
     def _style_axes(self):
         self.ax_track.set_ylabel("from rest (nm)")
         self.ax_err.set_ylabel("error (nm)")
         self.ax_volt.set_ylabel("command (V)")
-        self.ax_volt.set_xlabel("time (s)")
-        for ax in (self.ax_track, self.ax_err, self.ax_volt):
+        self.ax_share.set_ylabel("request share (%)")
+        self.ax_share.set_xlabel("time (s)")
+        self.ax_share.set_ylim(-105, 105)
+        for ax in self._axes():
             ax.grid(True, alpha=0.3)
             ax.tick_params(labelsize=8)
             ax.yaxis.label.set_size(8)
-        self.ax_volt.xaxis.label.set_size(8)
+        self.ax_share.xaxis.label.set_size(8)
 
     def _reset_axes(self, title=""):
-        for ax in (self.ax_track, self.ax_err, self.ax_volt):
+        for ax in self._axes():
             ax.clear()
         self._style_axes()
         self.ax_err.axhline(0.0, color="grey", lw=0.8, alpha=0.6)
+        self.ax_share.axhline(0.0, color="grey", lw=0.8, alpha=0.6)
         if title:
             self.ax_track.set_title(title, fontsize=9)
         self._lines = None
@@ -180,9 +251,9 @@ class LivePlot:
         self._reset_axes(title)
         self.canvas.draw_idle()
 
-    def _ensure_lines(self, show_res1: bool, title: str):
+    def _ensure_lines(self, show_res1: bool, title: str, share_keys: tuple):
         """Create the line artists once per run; reuse them every frame after."""
-        mode = (show_res1, title)
+        mode = (show_res1, title, share_keys)
         if self._lines is not None and self._mode == mode:
             return
         self._reset_axes(title)
@@ -195,8 +266,14 @@ class LivePlot:
         if show_res1:
             self._lines["res1"] = self.ax_err.plot(
                 [], [], lw=1.0, color="#2ca02c", alpha=0.85, label="disturbance est.")[0]
+        for key in share_keys:
+            self._lines[f"share_{key}"] = self.ax_share.plot(
+                [], [], lw=1.2, color=CONTRIB_COLORS[key], label=CONTRIB_LABELS[key],
+            )[0]
         for ax in (self.ax_track, self.ax_err):
             ax.legend(fontsize=7, loc="upper right", framealpha=0.85)
+        if share_keys:
+            self.ax_share.legend(fontsize=7, loc="upper right", framealpha=0.85)
         self._mode = mode
 
     @classmethod
@@ -207,10 +284,11 @@ class LivePlot:
         step = n // cls.MAX_POINTS + 1
         return list(seq)[::step]
 
-    def update_live(self, t, r, y, e, v, res1=None, title=""):
+    def update_live(self, t, r, y, e, v, res1=None, title="", shares=None):
         """Redraw from the current run's arrays (already trimmed to a window)."""
         show_res1 = res1 is not None and len(res1) == len(t)
-        self._ensure_lines(show_res1, title)
+        share_keys = tuple(key for key in CONTRIB_KEYS if shares and key in shares)
+        self._ensure_lines(show_res1, title, share_keys)
 
         t_d = self._decimate(t)
         self._lines["r"].set_data(t_d, self._decimate(r))
@@ -219,6 +297,8 @@ class LivePlot:
         self._lines["v"].set_data(t_d, self._decimate(v))
         if show_res1:
             self._lines["res1"].set_data(t_d, self._decimate(res1))
+        for key in share_keys:
+            self._lines[f"share_{key}"].set_data(t_d, self._decimate(shares[key]))
 
         for ax in (self.ax_track, self.ax_err, self.ax_volt):
             ax.relim()
@@ -226,6 +306,7 @@ class LivePlot:
         self._ensure_span(self.ax_track, PLOT_MIN_SPAN_NM)
         self._ensure_span(self.ax_err, PLOT_MIN_SPAN_NM)
         self._ensure_span(self.ax_volt, PLOT_MIN_SPAN_V)
+        self.ax_share.set_ylim(-105, 105)
         self.canvas.draw_idle()
 
     @staticmethod
@@ -250,14 +331,23 @@ class LivePlot:
             first = runs[0][1]
             self.ax_track.plot(self._decimate(first["t"]), self._decimate(first["r"]),
                                lw=1.2, color="#888", ls="--", label="setpoint")
+        share_styles = {"ff": "-", "p": "--", "i": ":", "d": "-.", "dist": "-"}
         for (label, run), c in zip(runs, colors):
             t_d = self._decimate(run["t"])
             self.ax_track.plot(t_d, self._decimate(run["y"]), lw=1.3, color=c, label=label)
             self.ax_err.plot(t_d, self._decimate(run["e"]), lw=1.2, color=c, label=label)
             self.ax_volt.plot(t_d, self._decimate(run["v"]), lw=1.2, color=c, label=label)
+            for key, series in (run.get("shares") or {}).items():
+                self.ax_share.plot(
+                    t_d, self._decimate(series), lw=1.1, color=c, ls=share_styles[key],
+                    label=f"{label} {CONTRIB_LABELS[key]}",
+                )
 
         for ax in (self.ax_track, self.ax_err, self.ax_volt):
             ax.legend(fontsize=7, loc="upper right", framealpha=0.85)
+        if any(run.get("shares") for _, run in runs):
+            self.ax_share.legend(fontsize=7, loc="upper right", framealpha=0.85)
+        self.ax_share.set_ylim(-105, 105)
         self.canvas.draw_idle()
 
 
@@ -432,12 +522,18 @@ class ClosedLoopFrame(ttk.Frame):
 
     def _build_controller(self, algo: str, model: PlantModel, dt: float):
         if algo == "Software PID":
+            # A few-millisecond piezo is finished moving before the next 50 ms
+            # tick, so inverting the gain beats waiting for the integrator.
+            # Half a fringe is the smallest error this interferometer can show.
+            fast = model.tau_s * 4.0 < dt
             return SoftwarePID(
                 model,
                 kp=self._num(self.kp_var, "kp"),
                 ki=self._num(self.ki_var, "ki", lo=0.0),
                 kd=self._num(self.kd_var, "kd"),
                 d_filter_n=self._num(self.dfn_var, "D filter N", lo=0.0),
+                feedforward=fast,
+                deadband_nm=(0.5 * FRINGE_NM) if fast else 0.0,
             )
         return PreviewADRC(model, w0=self._num(self.w0_var, "w0", lo=1e-9), dt=dt)
 
@@ -1091,6 +1187,60 @@ class ClosedLoopFrame(ttk.Frame):
                 break
             time.sleep(max(dt, 0.005))
 
+    @staticmethod
+    def _append_sample(T, R, Y, E, V, RES, share_series, t, r, y, e, v, res1, shares):
+        T.append(t)
+        R.append(r)
+        Y.append(y)
+        E.append(e)
+        V.append(v)
+        RES.append(res1)
+        for key, series in share_series.items():
+            series.append(shares[key])
+
+    def _command_voltage(self, v: float, channel: int, traj, model, t: float) -> None:
+        """Send `v` to Output 1.
+
+        A sine is generated inside the Moku, so the piezo keeps moving between
+        the 20 ms corrections instead of sitting on a held DC level. The
+        offset carries whatever part of `v` is not that sine (the trim). Any
+        other waveform, or a sine the Moku will not accept, is sent as DC.
+        """
+        k = model.K_nm_per_V
+        vpp = 2.0 * abs(traj.amplitude_nm / k) if k else 0.0
+        smooth = (
+            traj.waveform == "Sine"
+            and traj.frequency_hz > 0.0
+            and hasattr(self.moku_tab, "set_smooth_sine")
+        )
+        if smooth:
+            ph = (t * traj.frequency_hz + traj.phase_deg / 360.0) % 1.0
+            phase_deg = (ph * 360.0) % 360.0
+            if traj.amplitude_nm < 0.0:
+                phase_deg = (phase_deg + 180.0) % 360.0
+            moku_sine = (vpp / 2.0) * np.sin(np.deg2rad(phase_deg))
+            offset = float(v) - moku_sine
+            # The FPGA keeps synthesizing the sine. Resend only when the trim
+            # or the carrier changed, so a 20 ms tick does not restart it.
+            prev = getattr(self, "_sine_cmd", None)
+            changed = prev is None or (
+                abs(offset - prev[2]) >= 0.01
+                or abs(vpp - prev[1]) >= 1e-4
+                or abs(traj.frequency_hz - prev[0]) >= 1e-6
+            )
+            if not changed:
+                return
+            try:
+                self.moku_tab.set_smooth_sine(
+                    channel, traj.frequency_hz, vpp, offset, phase_deg)
+                self._sine_cmd = (traj.frequency_hz, vpp, offset, phase_deg)
+                return
+            except Exception:
+                self._sine_cmd = None
+        else:
+            self._sine_cmd = None
+        self.moku_tab.set_dc_voltage(v, channel)
+
     def _drive(self, controller, traj, model, dt, cfg):
         """
         Run one controller for cfg["duration"] seconds.
@@ -1104,6 +1254,7 @@ class ClosedLoopFrame(ttk.Frame):
 
         writer = log_file = None
         T, R, Y, E, V, RES = [], [], [], [], [], []
+        share_series = {key: [] for key in controller.command_terms()}
         jitter_warned = False
         pinned_since = None
         reason = "Status: finished."
@@ -1111,9 +1262,14 @@ class ClosedLoopFrame(ttk.Frame):
         with self._lock:
             self._trace = {}
 
-        # The interferometer's zero is not the piezo's 0 V position. Run the
-        # controller on motion relative to the rest reading, and lift the wave
-        # if it would otherwise sit where the voltage can only be clipped to 0.
+        # The interferometer's zero is not the piezo's 0 V position, and the
+        # absolute count can be a huge positive or negative number. The offset
+        # and amplitude the user typed are motion above that rest reading, so
+        # the count is removed from the measurement only. The lift keeps the
+        # trough of the wave a little above 0 in that same frame. Subtracting
+        # the raw count from the setpoint makes a negative rest reading look
+        # like a request for hundreds of millions of nanometres, which pins
+        # the command at v_max and draws the sine as a flat line.
         y_rest = self._measure_rest(cfg["channel"], dt)
         if self._stop_flag.is_set():
             return None, "Status: stopped by user."
@@ -1121,7 +1277,7 @@ class ClosedLoopFrame(ttk.Frame):
             return None, "Status: stopped — no measurement while finding the rest position."
         shift = lift_reference(
             traj.offset_nm, traj.amplitude_nm, traj.waveform,
-            traj.frequency_hz, y_rest, REST_MARGIN_NM,
+            traj.frequency_hz, 0.0, REST_MARGIN_NM,
         )
 
         try:
@@ -1142,14 +1298,26 @@ class ClosedLoopFrame(ttk.Frame):
                     f"amp_nm={traj.amplitude_nm}", f"freq_hz={traj.frequency_hz}",
                     f"offset_nm={traj.offset_nm}", f"y_rest_nm={y_rest}",
                     f"lift_nm={shift}",
+                    "shares=signed percent of sum(|term V|) before clip",
                 ])
-                writer.writerow(["t_s", "r_nm", "y_nm", "e_nm", "v_V", "dt_meas_s", "res1_nm"])
+                writer.writerow(LOG_COLUMNS)
                 with self._lock:
                     self._live["log_path"] = path
 
             t0 = time.perf_counter()
             next_tick = t0
             t_prev = t0
+            # Rest was just measured at 0 V, so the first reading should sit
+            # on the prediction. A later count that walks off is not motion.
+            guard = MeasurementGuard(model)
+            guard.reset(0.0, 0.0)
+            # The plotted measurement is the fringe count. A count the piezo
+            # could not have produced is held at the last real fringe, not
+            # replaced by the model (that copy tracks the setpoint).
+            last_good = 0.0
+            # Ticks the raw count has spent on a fringe farther from the setpoint.
+            fringe_away = 0
+            self._sine_cmd = None
 
             while not self._stop_flag.is_set():
                 if duration > 0.0 and (time.perf_counter() - t0) >= duration:
@@ -1172,23 +1340,60 @@ class ClosedLoopFrame(ttk.Frame):
                 t_prev = now
                 dt_eff = dt_meas if 0.0 < dt_meas < 10.0 * dt else dt
 
-                r = traj.r(t) + shift
-                y_rel = y_meas - y_rest
+                r_rel = traj.r(t) + shift
+                y_raw = whole_fringe_nm(y_meas - y_rest)
+                _guarded, accepted = guard.update(y_raw, dt_eff)
+                if accepted:
+                    # A count moving toward the setpoint's fringe is taken at once.
+                    # A bounce back to a farther fringe has to repeat before it shows.
+                    y_rel, fringe_away = choose_fringe_step(
+                        last_good, y_raw, r_rel, fringe_away)
+                    last_good = y_rel
+                else:
+                    y_rel = last_good
+                    fringe_away = 0
+                # A rejected count is not a position to servo. Closing the
+                # loop on the last held fringe winds the command to 0 V and
+                # leaves it there, which is the flat ending in the 11:50 log.
+                y_ctrl = y_rel if accepted else r_rel
                 if is_preview:
                     t_d, t_d1 = controller.preview_times(t)
                     v = controller.update(
-                        traj.r(t_d) + shift - y_rest,
-                        traj.r(t_d1) + shift - y_rest,
-                        y_rel, dt_eff)
+                        traj.r(t_d) + shift,
+                        traj.r(t_d1) + shift,
+                        y_ctrl, dt_eff)
                     res1 = controller.diagnostics()["res1"]
                 else:
-                    v = controller.update(r - y_rest, y_rel, dt_eff)
+                    r_next = traj.r(t + dt) + shift
+                    v = controller.update(
+                        r_rel, y_ctrl, dt_eff, setpoint_next_nm=r_next)
                     res1 = float("nan")
+                terms = controller.command_terms()
+                shares = contribution_shares(terms)
+                _span_lo, span_hi = setpoint_span_nm(
+                    traj.offset_nm, traj.amplitude_nm, traj.waveform,
+                    traj.frequency_hz, shift,
+                )
+                k = model.K_nm_per_V
+                if k > 0.0:
+                    v_crest = min(model.v_max, max(0.0, span_hi / k))
+                    v_set = min(model.v_max, max(0.0, r_rel / k))
+                else:
+                    v_crest = model.v_max
+                    v_set = 0.0
+                outside = y_ctrl > span_hi + FRINGE_NM
+                v = command_on_wave(
+                    v, y_ctrl, span_hi, v_set, v_crest,
+                    v_max=model.v_max, setpoint_nm=r_rel,
+                )
+                if outside or not accepted:
+                    controller.clear_trim()
+                controller.last_v = v
+                guard.note_voltage(v)
 
-                self.moku_tab.set_dc_voltage(v, cfg["channel"])
+                self._command_voltage(v, cfg["channel"], traj, model, t)
 
-                e = r - y_meas
-                r_rel = r - y_rest
+                e = r_rel - y_rel
                 tol = max(abs(traj.amplitude_nm), 300.0)
                 pinned = (v <= 1e-3 and e > tol) or (v >= model.v_max - 1e-3 and e < -tol)
                 if pinned:
@@ -1201,19 +1406,25 @@ class ClosedLoopFrame(ttk.Frame):
                             f"{PINNED_ABORT_S:.0f} s while the error stayed past "
                             f"{tol:.0f} nm. The piezo cannot move any further that way."
                         )
-                        T.append(t); R.append(r_rel); Y.append(y_rel); E.append(e); V.append(v)
-                        RES.append(res1)
+                        self._append_sample(
+                            T, R, Y, E, V, RES, share_series,
+                            t, r_rel, y_rel, e, v, res1, shares,
+                        )
                         break
                 else:
                     pinned_since = None
 
-                T.append(t); R.append(r_rel); Y.append(y_rel); E.append(e); V.append(v)
-                RES.append(res1)
+                self._append_sample(
+                    T, R, Y, E, V, RES, share_series,
+                    t, r_rel, y_rel, e, v, res1, shares,
+                )
 
                 if writer is not None:
                     writer.writerow([f"{t:.6f}", f"{r_rel:.4f}", f"{y_rel:.4f}",
                                      f"{e:.4f}", f"{v:.6f}", f"{dt_meas:.6f}",
-                                     f"{res1:.4f}" if is_preview else ""])
+                                     f"{res1:.4f}" if is_preview else "",
+                                     f"{y_raw:.4f}",
+                                     *contrib_cells(terms, shares)])
 
                 if (not jitter_warned and len(T) > 5
                         and abs(dt_meas - dt) > JITTER_WARN_FRAC * dt):
@@ -1235,8 +1446,10 @@ class ClosedLoopFrame(ttk.Frame):
                         "t": T[-win:], "r": R[-win:], "y": Y[-win:],
                         "e": E[-win:], "v": V[-win:],
                         "res1": RES[-win:] if is_preview else None,
+                        "shares": {key: vals[-win:] for key, vals in share_series.items()},
                         "title": controller.name,
                     }
+                    self._live["shares_txt"] = format_shares(shares)
 
                 next_tick += dt
                 sleep_for = next_tick - time.perf_counter()
@@ -1255,8 +1468,13 @@ class ClosedLoopFrame(ttk.Frame):
                     pass
 
         if shift >= 1.0:
-            center = traj.offset_nm + shift - y_rest
+            center = traj.offset_nm + shift
             reason += f"  Working {center:.0f} nm above the reading at 0 V."
+        if guard.rejected:
+            reason += (
+                f"  Ignored {guard.rejected} interferometer jumps the piezo "
+                "could not have made, and kept commanding the setpoint."
+            )
 
         if not E:
             return None, reason
@@ -1267,6 +1485,7 @@ class ClosedLoopFrame(ttk.Frame):
             "name": controller.name,
             "t": np.asarray(T), "r": np.asarray(R), "y": np.asarray(Y),
             "e": e_arr, "v": np.asarray(V), "n": len(e_arr),
+            "shares": {key: np.asarray(vals, dtype=float) for key, vals in share_series.items()},
             "rmse": float(np.sqrt(np.mean(e_arr ** 2))),
             "settled_rmse": float(np.sqrt(np.mean(e_arr[half:] ** 2))) if half else float("nan"),
             "max_err": float(np.max(np.abs(e_arr))),
@@ -1353,12 +1572,15 @@ class ClosedLoopFrame(ttk.Frame):
                         f"{float(self.dt_var.get()):.0f} ms — gains were discretised for the nominal dt")
             if "log_path" in live:
                 msg += f"\n{os.path.basename(live['log_path'])}"
+            if live.get("shares_txt"):
+                msg += f"\ncommand  {live['shares_txt']}"
             self.metrics_var.set(msg)
 
         if trace and trace.get("t"):
             self.plot.update_live(
                 trace["t"], trace["r"], trace["y"], trace["e"], trace["v"],
-                res1=trace.get("res1"), title=trace.get("title", ""))
+                res1=trace.get("res1"), title=trace.get("title", ""),
+                shares=trace.get("shares"))
 
         if self._worker is not None and self._worker.is_alive():
             self.after(200, self._pump)

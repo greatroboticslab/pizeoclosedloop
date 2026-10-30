@@ -719,6 +719,46 @@ class MokuWaveformFrame(ttk.Frame):
             strict=True,
         )
 
+    def set_smooth_sine(
+        self,
+        channel: int,
+        frequency_hz: float,
+        amplitude_vpp: float,
+        offset_v: float,
+        phase_deg: float,
+    ):
+        """Play a sine on the FPGA and hold a DC trim in the offset.
+
+        generate_waveform is the same call set_dc_voltage uses, but a DC level
+        sits still until the next packet. A sine keeps moving between packets.
+        phase_deg is the trajectory phase at this instant, so the value at the
+        update matches the command and the generator then carries it forward.
+        """
+        if self._wg is None:
+            raise RuntimeError("Moku not connected")
+        amplitude_vpp = float(amplitude_vpp)
+        offset_v = float(offset_v)
+        frequency_hz = float(frequency_hz)
+        phase_deg = float(phase_deg) % 360.0
+        if not (MOKUGO_AMPLITUDE_MIN <= amplitude_vpp <= MOKUGO_AMPLITUDE_MAX):
+            raise ValueError(f"sine amplitude {amplitude_vpp} Vpp is outside the Moku range")
+        if not (MOKUGO_FREQ_MIN <= frequency_hz <= MOKUGO_FREQ_MAX_SINE):
+            raise ValueError(f"sine frequency {frequency_hz} Hz is outside the Moku range")
+        if not (MOKUGO_OFFSET_MIN <= offset_v <= MOKUGO_OFFSET_MAX):
+            raise ValueError(f"sine offset {offset_v} V is outside the Moku range")
+        # The peak is the offset plus half the peak-to-peak amplitude.
+        if abs(offset_v) + amplitude_vpp / 2.0 > MOKUGO_OFFSET_MAX:
+            raise ValueError("sine plus offset exceeds the Moku output range")
+        self._wg.generate_waveform(
+            channel=int(channel),
+            type="Sine",
+            amplitude=amplitude_vpp,
+            frequency=frequency_hz,
+            offset=offset_v,
+            phase=phase_deg,
+            strict=True,
+        )
+
     def begin_software_control(self, channel: int = 1):
         """Hand Output 1 to the software loop. Raises if not connected."""
         if self._wg is None:

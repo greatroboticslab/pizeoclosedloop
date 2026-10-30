@@ -9,6 +9,7 @@
 
 import os
 import re
+import shutil
 import sys
 import subprocess
 import socket
@@ -35,7 +36,7 @@ BASE_DIR = _get_base_dir()
 # Helpers from process_raw (is_wsl, wsl_to_win_path, raw_to_nm)
 # -------------------------------------------------------------------
 try:
-    from process_raw import is_wsl, wsl_to_win_path, raw_to_nm
+    from process_raw import is_wsl, wsl_to_win_path, phase_fraction, raw_to_nm
 except ImportError:
     # Fallbacks if process_raw.py isn't present
     import platform
@@ -53,6 +54,14 @@ except ImportError:
     def wsl_to_win_path(path: str) -> str:
         return path
 
+    def phase_fraction(phase_raw):
+        word = int(phase_raw)
+        if 0 <= word <= 0xFFFF and word & 0x8000:
+            word -= 0x10000
+        if (word & 0x7E00) == 0 or word < 0:
+            return word / 256.0
+        return None
+
     def raw_to_nm(D, wavelength=632.991372, phase=0.0, correction=0.0):
         # Same math as VB: (D - phase) * λ/2 - correction
         return (D - phase) * (wavelength / 2.0) - correction
@@ -67,10 +76,11 @@ CORRECTION_NM = 0.0          # Should match CurrentValueCorrection (primary axis
 
 MQTT_BROKER_HOST = "localhost"
 MQTT_PORT = 1883
-MQTT_TOPIC = "vb_to_py"       # VB publishes "D:<raw> N:<index>" here
+MQTT_TOPIC = "vb_to_py"       # VB publishes "D:<raw> P:<phase> N:<index>" here
 
-# Payload emitted by uMD_GUI's MainForm.vb: `"D:" & D & " N:" & N`
-_DN_RE = re.compile(r"^\s*D:\s*(-?\d+)\s+N:\s*(-?\d+)\s*$")
+# Payload emitted by uMD_GUI's MainForm.vb. P is the raw phase word and is
+# optional so a GUI that still sends only D and N keeps working (whole fringes).
+_DN_RE = re.compile(r"^\s*D:\s*(-?\d+)(?:\s+P:\s*(-?\d+))?\s+N:\s*(-?\d+)(?:\s+Y:\s*([-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?))?\s*$")
 
 MAX_POINTS = 5000             # Points to keep in buffer for plotting
 UI_UPDATE_MS = 50             # UI refresh interval (~20 fps)
@@ -204,6 +214,7 @@ class DisplayFrame(ttk.Frame):
         self.last_ref_count = None
         self.last_d_counts = None
         self.last_phase_raw = None
+        self._phase_hold = 0.0
         self.last_source = None  # 'csv' or 'float' or 'bad'
 
         self._build_ui()
@@ -342,28 +353,50 @@ class DisplayFrame(ttk.Frame):
                     phase_raw = int(parts[2])
 
                     # Mirror VB math:
-                    #   currentValue = (D - (phaseRaw/PHASE_SCALE)) * WAVELENGTH_NM/2 - CORRECTION_NM
-                    phase = float(phase_raw) / float(PHASE_SCALE)
+                    #   currentValue = (D - (phaseRaw/256)) * WAVELENGTH_NM/2 - CORRECTION_NM
+                    phase = phase_fraction(phase_raw)
+                    if phase is None:
+                        phase = self._phase_hold
+                    else:
+                        self._phase_hold = phase
                     nm = (float(d_counts) - phase) * float(WAVELENGTH_NM) / 2.0 - float(CORRECTION_NM)
                     self.last_source = "csv"
                 except Exception:
                     nm = None
 
-        # "D:<raw> N:<index>" — what uMD_GUI actually publishes. It builds this
-        # string in MainForm.vb (`"D:" & D & " N:" & N`), reusing the exact
-        # capture-log format, so it has neither commas nor a bare number and
-        # matches neither branch above.
+        # "D:<raw> P:<phase> N:<index>" — what uMD_GUI publishes. P is optional.
+        # Without it the position is an integer fringe (λ/2 ≈ 316 nm), which is
+        # why a 600 nm wave only ever lands on a handful of levels.
         if nm is None:
             m = _DN_RE.match(text)
             if m is not None:
                 try:
                     d_counts = int(m.group(1))
-                    ref_count = int(m.group(2))
-                    nm = raw_to_nm(
-                        float(d_counts),
-                        wavelength=WAVELENGTH_NM,
-                        correction=CORRECTION_NM,
-                    )
+                    ref_count = int(m.group(3))
+                    if m.group(2) is not None:
+                        phase_raw = int(m.group(2))
+                        phase = phase_fraction(phase_raw)
+                        # An invalid word is not a new fraction. Keep the last
+                        # valid one so a flag sample does not snap to a fringe.
+                        if phase is None:
+                            phase = self._phase_hold
+                        else:
+                            self._phase_hold = phase
+                        nm = raw_to_nm(
+                            float(d_counts),
+                            wavelength=WAVELENGTH_NM,
+                            phase=phase,
+                            correction=CORRECTION_NM,
+                        )
+                    elif m.group(4) is not None:
+                        nm = float(m.group(4))
+                    else:
+                        nm = raw_to_nm(
+                            float(d_counts),
+                            wavelength=WAVELENGTH_NM,
+                            phase=0.0,
+                            correction=CORRECTION_NM,
+                        )
                     self.last_source = "dn"
                 except Exception:
                     nm = None
@@ -416,7 +449,8 @@ class DisplayFrame(ttk.Frame):
             if self.last_source == "csv" and self.last_ref_count is not None:
                 self.raw_var.set(f"Parsed: refCount={self.last_ref_count}, D={self.last_d_counts}, phaseRaw={self.last_phase_raw}")
             elif self.last_source == "dn":
-                self.raw_var.set(f"Parsed: D={self.last_d_counts}, N={self.last_ref_count}")
+                phase = "" if self.last_phase_raw is None else f", P={self.last_phase_raw}"
+                self.raw_var.set(f"Parsed: D={self.last_d_counts}{phase}, N={self.last_ref_count}")
             elif self.last_source == "float":
                 self.raw_var.set("Parsed: single float (treated as nm)")
             elif self.last_source == "bad":
@@ -440,6 +474,16 @@ class DisplayFrame(ttk.Frame):
           - If WSL, convert to Windows path via wslpath -w and launch with explorer.exe
           - Else, run directly on Windows
         """
+        # Check if an instance launched by this tab is still running
+        if self.process is not None and self.process.poll() is None:
+            self.status_var.set(f"Status: Already running (PID: {self.process.pid})")
+            messagebox.showinfo(
+                "Already Running",
+                f"uMD_GUI.exe is already running (PID {self.process.pid}).\n\n"
+                "Launching a second copy would fail to open the COM port.",
+            )
+            return
+
         # Linux-side absolute path
         linux_path = os.path.abspath(self.exe_rel_path)
 
@@ -465,7 +509,33 @@ class DisplayFrame(ttk.Frame):
                 self.status_var.set("Status: Launched in Windows")
 
             else:
-                # Native Windows
+                # Native Windows: terminate any stale/orphaned uMD_GUI.exe holding the COM port
+                try:
+                    subprocess.run(
+                        ["taskkill", "/F", "/IM", "uMD_GUI.exe"],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        check=False,
+                    )
+                except Exception:
+                    pass
+
+                # The GUI that is already open holds uMD_GUI.exe, so a rebuild
+                # lands in bin\Release. Pick it up on the next launch, once
+                # the old process has been closed.
+                built = os.path.join(
+                    os.path.dirname(linux_path),
+                    "uMD_GUI-30-Dec-7.29PM", "bin", "Release", "uMD_GUI.exe",
+                )
+                try:
+                    if os.path.isfile(built) and (
+                        not os.path.isfile(linux_path)
+                        or os.path.getmtime(built) > os.path.getmtime(linux_path)
+                    ):
+                        shutil.copy2(built, linux_path)
+                except Exception:
+                    pass
+
                 self.process = subprocess.Popen(
                     [linux_path],
                     stdout=subprocess.DEVNULL,
@@ -479,15 +549,47 @@ class DisplayFrame(ttk.Frame):
 
     def _close_app(self):
         """Terminate the launched uMD_GUI.exe process, if any."""
-        if self.process:
+        if self.process is not None and self.process.poll() is None:
             try:
                 self.process.terminate()
+                try:
+                    self.process.wait(timeout=2.0)
+                except subprocess.TimeoutExpired:
+                    self.process.kill()
                 self.process = None
                 self.status_var.set("Status: Closed by user")
             except Exception as e:
                 messagebox.showerror("Error", f"Could not close process:\n{e}")
         else:
+            self.process = None
             self.status_var.set("Status: No process attached")
+
+    def shutdown(self):
+        """Cleanly stop uMD_GUI, MQTT client, and broker on application exit."""
+        if self.process is not None and self.process.poll() is None:
+            try:
+                self.process.terminate()
+                try:
+                    self.process.wait(timeout=1.5)
+                except subprocess.TimeoutExpired:
+                    self.process.kill()
+            except Exception:
+                pass
+            self.process = None
+
+        if self.mqtt_client is not None:
+            try:
+                self.mqtt_client.loop_stop()
+                self.mqtt_client.disconnect()
+            except Exception:
+                pass
+
+        if self.broker_proc is not None and self.broker_proc.poll() is None:
+            try:
+                self.broker_proc.terminate()
+            except Exception:
+                pass
+            self.broker_proc = None
 
     def read_latest(self):
         """
@@ -507,10 +609,15 @@ class DisplayFrame(ttk.Frame):
         return self.last_payload is not None
 
     def is_streaming(self, max_age_sec: float = 1.0) -> bool:
-        return self.last_payload is not None
+        sample = self.read_latest()
+        if sample is None:
+            return False
+        return (time.time() - sample[0]) <= max_age_sec
 
     def is_umd_running(self) -> bool:
-        return self.process is not None
+        if self.process is not None and self.process.poll() is not None:
+            self.process = None
+        return self.process is not None or self.is_streaming()
 
 
 

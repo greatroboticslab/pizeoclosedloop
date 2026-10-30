@@ -159,6 +159,34 @@ class TrajectoryGenerator:
 MAX_PLAUSIBLE_TAU_S = 1.0
 MAX_PLAUSIBLE_THETA_S = 0.2
 
+# One HeNe fringe (λ/2). Without the phase word, uMD's count moves in steps
+# of this size. Same wavelength as process_raw.raw_to_nm.
+FRINGE_NM = 632.991372 / 2.0
+
+# The 2026-10-19 software-PID log stays within 3.2 fringes of the position
+# the applied voltage predicts. At t≈9.6 s the count steps 5 fringes with
+# the output already at 0 V, then walks out to 54 and sits there. Anything
+# past this margin is a lost fringe lock, not piezo motion.
+GLITCH_MARGIN_FRINGES = 4.0
+
+# Learn the 0 V reading only while the command is essentially off. Updating
+# the offset at mid-travel would fold a gain error into it.
+BIAS_LEARN_V = 0.2
+BIAS_TAU_S = 0.4
+
+
+def measurement_is_whole_fringes(y_nm: float) -> bool:
+    """True when the reading sits on an integer fringe, so the phase was dropped.
+
+    A real sub-fringe sample is about 1.2 nm away from that grid. Anything
+    within 0.001 nm of a fringe is the integer count, not a coincidence.
+    """
+    y = float(y_nm)
+    if not math.isfinite(y):
+        return False
+    k = round(y / FRINGE_NM)
+    return abs(y - k * FRINGE_NM) <= 1e-3
+
 
 def plant_fit_usable(tau_s: float, theta_s: float) -> bool:
     """False when an identification fit is too slow to be a piezo model."""
@@ -196,6 +224,150 @@ def lift_reference(
 # Controllers
 # ─────────────────────────────────────────────────────────────────────────────
 
+class MeasurementGuard:
+    """
+    Replace an interferometer reading the piezo could not have produced.
+
+    The count is trusted only when it lands near the discrete-FOPDT prediction
+    from the previous accepted position and the voltage actually applied. A
+    runaway fringe count (tens of fringes at 0 V) is swapped for that
+    prediction, so the controller keeps steering the setpoint instead of
+    winding down to 0 V and staying there until the count walks back.
+    """
+
+    def __init__(self, model: PlantModel, margin_nm: float | None = None) -> None:
+        self.model = model
+        self.margin_nm = (
+            float(GLITCH_MARGIN_FRINGES * FRINGE_NM) if margin_nm is None else float(margin_nm)
+        )
+        self.reset()
+
+    def reset(self, y_nm: float = 0.0, v: float = 0.0) -> None:
+        self.y = float(y_nm)
+        self.v = float(v)
+        self.rejected = 0
+
+    def update(self, y_meas_nm: float, dt: float) -> tuple[float, bool]:
+        """
+        Return (y_for_controller, accepted).
+
+        Call note_voltage with the command applied after this tick so the next
+        prediction matches the voltage the piezo actually saw.
+        """
+        step = max(float(dt), 1e-6)
+        a = math.exp(-step / self.model.tau_s)
+        y_pred = a * self.y + self.model.K_nm_per_V * (1.0 - a) * self.v
+        if abs(float(y_meas_nm) - y_pred) <= self.margin_nm:
+            self.y = float(y_meas_nm)
+            return self.y, True
+        self.y = y_pred
+        self.rejected += 1
+        return self.y, False
+
+    def note_voltage(self, v: float) -> None:
+        self.v = float(v)
+
+
+def setpoint_span_nm(
+    offset_nm: float,
+    amplitude_nm: float,
+    waveform: str,
+    frequency_hz: float,
+    shift_nm: float = 0.0,
+) -> tuple[float, float]:
+    """Lowest and highest displacement the reference wave asks for."""
+    center = float(offset_nm) + float(shift_nm)
+    amp = abs(float(amplitude_nm))
+    if waveform == "DC" or frequency_hz <= 0.0:
+        level = center + (float(amplitude_nm) if waveform == "DC" else 0.0)
+        return level, level
+    if waveform == "Pulse":
+        return center, center + amp
+    return center - amp, center + amp
+
+
+# A fringe moving away from the setpoint has to repeat this many ticks
+# before the trace follows it. One sample of neighbour-fringe chatter does not.
+FRINGE_HOLD_TICKS = 4
+
+
+def command_on_wave(
+    v: float,
+    y_nm: float,
+    high_nm: float,
+    v_setpoint: float,
+    v_crest: float,
+    v_max: float | None = None,
+    setpoint_nm: float | None = None,
+    fringe_nm: float = FRINGE_NM,
+) -> float:
+    """Keep the command on the voltage the setpoint wave needs.
+
+    v_crest is the open-loop voltage for the top of the wave. Once the count
+    is within a fringe of the current setpoint, the command stays at or below
+    that crest so it does not walk past the wave. While the count is still
+    more than one fringe short of the setpoint, the trim is allowed up to
+    v_max: the crest voltage alone left the 12:06 run stuck on the lower
+    fringes. A reading already past the wave is brought back with the current
+    setpoint voltage, not parked at 0 V.
+    """
+    crest = max(float(v_crest), 0.0)
+    ceiling = crest if v_max is None else max(float(v_max), 0.0)
+    follow = min(max(float(v_setpoint), 0.0), crest)
+    y = float(y_nm)
+    if y > float(high_nm) + float(fringe_nm):
+        return follow
+    goal = float(high_nm) if setpoint_nm is None else float(setpoint_nm)
+    if y < goal - float(fringe_nm):
+        return min(max(float(v), 0.0), max(ceiling, crest))
+    return min(max(float(v), 0.0), crest)
+
+
+def choose_fringe_step(
+    held_nm: float,
+    raw_nm: float,
+    setpoint_nm: float,
+    away_ticks: int,
+    hold_ticks: int = FRINGE_HOLD_TICKS,
+    fringe_nm: float = FRINGE_NM,
+) -> tuple[float, int]:
+    """Trusted fringe this tick, and how long an away-step has lasted.
+
+    The fringe nearest the current setpoint is the step the trace should be
+    on. A count that moves closer to that step is taken immediately. A count
+    that moves the other way has to repeat ``hold_ticks`` times, so a bounce
+    between neighbouring fringes does not flicker the measurement.
+    """
+    step = float(fringe_nm)
+
+    def snap(y: float) -> float:
+        return round(float(y) / step) * step
+
+    target = snap(setpoint_nm)
+    raw = snap(raw_nm)
+    held = snap(held_nm)
+    if abs(raw - held) <= 1e-6:
+        return held, 0
+    if abs(raw - target) + 1e-6 < abs(held - target):
+        return raw, 0
+    ticks = int(away_ticks) + 1
+    if ticks >= max(1, int(hold_ticks)):
+        return raw, 0
+    return held, ticks
+
+
+def whole_fringe_nm(y_nm: float) -> float:
+    """Snap a reading to the nearest interferometer fringe.
+
+    The closed-loop measurement is the fringe count. A phase fraction, or a
+    model fill between counts, is not part of that result.
+    """
+    y = float(y_nm)
+    if not math.isfinite(y):
+        return y
+    return round(y / FRINGE_NM) * FRINGE_NM
+
+
 class SoftwarePID:
     """
     Discrete PI(D) with anti-windup and a filtered derivative on the
@@ -205,6 +377,11 @@ class SoftwarePID:
 
     Derivative acts on -y rather than on e so that a setpoint step does not
     produce a derivative kick.
+
+    When `feedforward` is set, the plant is known to settle inside one tick,
+    so the voltage is the inverted gain of the upcoming setpoint. Feedback
+    then only corrects an error larger than `deadband_nm` (half a fringe on
+    this interferometer). Smaller residuals are the sensor's own step size.
     """
 
     def __init__(
@@ -214,12 +391,16 @@ class SoftwarePID:
         ki: float,
         kd: float = 0.0,
         d_filter_n: float = 20.0,
+        feedforward: bool = False,
+        deadband_nm: float = 0.0,
     ) -> None:
         self.model      = model
         self.kp         = float(kp)
         self.ki         = float(ki)
         self.kd         = float(kd)
         self.d_filter_n = float(d_filter_n)
+        self.feedforward = bool(feedforward)
+        self.deadband_nm = float(deadband_nm)
         self.reset()
 
     name = "Software PID"
@@ -228,18 +409,22 @@ class SoftwarePID:
         self._integral = 0.0
         self._d_filt   = 0.0
         self._prev_y   = None   # None => no derivative on the very first tick
+        self._bias     = 0.0    # nm the piezo reads above K*v, learned at 0 V
+        self._v_applied = 0.0
         self.last_v    = 0.0
+        # Volts each term added into the last command, before the output clip.
+        self._terms = {"ff": 0.0, "p": 0.0, "i": 0.0, "d": 0.0} if self.feedforward else {
+            "p": 0.0, "i": 0.0, "d": 0.0,
+        }
 
-    def update(self, setpoint_nm: float, y_meas_nm: float, dt: float) -> float:
+    def update(
+        self,
+        setpoint_nm: float,
+        y_meas_nm: float,
+        dt: float,
+        setpoint_next_nm: float | None = None,
+    ) -> float:
         err = setpoint_nm - y_meas_nm
-
-        self._integral += err * dt
-        if self.ki > 0.0:
-            # Anti-windup: the integral alone may not exceed the whole voltage
-            # budget (runSim.m:423-426). Unlike Preview there is no feedforward
-            # term competing for that budget, so v_max is the right scope.
-            lim = self.model.v_max / self.ki
-            self._integral = min(max(self._integral, -lim), lim)
 
         n = self.d_filter_n
         if n > 0.0 and self.kd != 0.0 and self._prev_y is not None:
@@ -251,12 +436,71 @@ class SoftwarePID:
             self._d_filt = 0.0
         self._prev_y = y_meas_nm
 
-        v = self.kp * err + self.ki * self._integral + self._d_filt
-        self.last_v = min(max(v, 0.0), self.model.v_max)
-        return self.last_v
+        if not self.feedforward:
+            self._integral += err * dt
+            if self.ki > 0.0:
+                # Anti-windup: the integral alone may not exceed the whole voltage
+                # budget (runSim.m:423-426). Unlike Preview there is no feedforward
+                # term competing for that budget, so v_max is the right scope.
+                lim = self.model.v_max / self.ki
+                self._integral = min(max(self._integral, -lim), lim)
+            p_v = self.kp * err
+            i_v = self.ki * self._integral
+            d_v = self._d_filt
+            self._terms = {"p": p_v, "i": i_v, "d": d_v}
+            v = p_v + i_v + d_v
+            self.last_v = min(max(v, 0.0), self.model.v_max)
+            self._v_applied = self.last_v
+            return self.last_v
+
+        # The return position is not the rest reading taken at the start.
+        # Observe it only at ~0 V, where a wrong gain cannot look like an offset.
+        if self._v_applied < BIAS_LEARN_V:
+            resid = min(max(y_meas_nm - self._bias, -FRINGE_NM), FRINGE_NM)
+            self._bias += (max(dt, 0.0) / BIAS_TAU_S) * resid
+            self._bias = min(max(self._bias, -4.0 * FRINGE_NM), 4.0 * FRINGE_NM)
+
+        dead = self.deadband_nm
+        if dead > 0.0 and abs(err) <= dead:
+            err_fb = 0.0
+        elif dead > 0.0:
+            err_fb = err - math.copysign(dead, err)
+        else:
+            err_fb = err
+
+        r_ff = setpoint_nm if setpoint_next_nm is None else setpoint_next_nm
+        u_ff = (r_ff - self._bias) / self.model.K_nm_per_V
+        p_v = self.kp * err_fb
+        i_v = self.ki * self._integral
+        d_v = self._d_filt
+        # Snapshot the integral that actually went into this tick. The wind-up
+        # update below changes it for the next tick only.
+        self._terms = {"ff": u_ff, "p": p_v, "i": i_v, "d": d_v}
+        v_raw = u_ff + p_v + i_v + d_v
+        v = min(max(v_raw, 0.0), self.model.v_max)
+        # Do not wind the trim while the command is already hard against the
+        # rail that this error is asking for. That wind-up is what held 5 V
+        # across the crest and then dumped the piezo on the way down.
+        pushing = (v_raw > v and err_fb > 0.0) or (v_raw < v and err_fb < 0.0)
+        if not pushing:
+            self._integral += err_fb * dt
+            if self.ki > 0.0:
+                lim = self.model.v_max / self.ki
+                self._integral = min(max(self._integral, -lim), lim)
+        self._v_applied = v
+        self.last_v = v
+        return v
 
     def diagnostics(self) -> dict[str, float]:
-        return {"integral": self._integral, "d_filt": self._d_filt}
+        return {"integral": self._integral, "d_filt": self._d_filt, "bias": self._bias}
+
+    def clear_trim(self) -> None:
+        """Drop a wound-up integral after the count leaves the setpoint wave."""
+        self._integral = 0.0
+
+    def command_terms(self) -> dict[str, float]:
+        """Volts each term added into the last command, before the output clip."""
+        return dict(self._terms)
 
 
 class PreviewADRC:
@@ -336,6 +580,7 @@ class PreviewADRC:
         self.last_v = 0.0
         self._last_uff = 0.0
         self._last_err_trim = 0.0
+        self._terms = {"ff": 0.0, "dist": 0.0}
 
     def preview_times(self, t: float) -> tuple[float, float]:
         """The two future instants the feedforward needs: t+d*dt and t+(d+1)*dt."""
@@ -382,10 +627,22 @@ class PreviewADRC:
 
         # 4. Residual -> observer. Sign is model minus measurement.
         err_trim = y_model_delayed - y_meas_nm
+        # A count within one fringe of the setpoint can be the missing phase
+        # word. Clamping that gap keeps it from winding the trim to the rail.
+        # A count several fringes away is a real miss: the trim has to be
+        # allowed to cancel the feedforward, or the command stays at v_max
+        # and the reading walks out of the wave.
+        if (
+            measurement_is_whole_fringes(y_meas_nm)
+            and abs(y_meas_nm - r_at_d) <= FRINGE_NM
+        ):
+            err_trim = min(max(err_trim, -FRINGE_NM), FRINGE_NM)
         self._res = self.Ad_res @ self._res + self.Bd_res * err_trim
 
         # 5. Proportional, self-limiting correction via the static gain.
-        v = uFF + self._res[0] / K
+        dist_v = float(self._res[0]) / K
+        self._terms = {"ff": float(uFF), "dist": dist_v}
+        v = uFF + dist_v
 
         self._last_uff = uFF
         self._last_err_trim = err_trim
@@ -399,6 +656,28 @@ class PreviewADRC:
             "res1": float(self._res[0]),
             "res2": float(self._res[1]),
         }
+
+    def clear_trim(self) -> None:
+        """Drop a wound-up disturbance estimate after the count leaves the wave."""
+        self._res[:] = 0.0
+
+    def command_terms(self) -> dict[str, float]:
+        """Volts of the feedforward and the disturbance trim, before the clip."""
+        return dict(self._terms)
+
+
+def contribution_shares(terms: dict[str, float]) -> dict[str, float]:
+    """Signed percent of the sum of absolute term voltages.
+
+    The magnitudes add to 100. A term pulling against the others is negative.
+    The split is taken before the 0 V / v_max clip, so it describes the
+    request; the clipped command is what the laser actually receives.
+    An all-zero request is 0% on every term.
+    """
+    total = sum(abs(float(value)) for value in terms.values())
+    if total <= 0.0:
+        return {key: 0.0 for key in terms}
+    return {key: 100.0 * float(value) / total for key, value in terms.items()}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -614,6 +893,8 @@ def simulate(
         if isinstance(controller, PreviewADRC):
             t_d, t_d1 = controller.preview_times(t)
             v = controller.update(traj.r(t_d), traj.r(t_d1), y_meas, dt)
+        elif isinstance(controller, SoftwarePID) and controller.feedforward:
+            v = controller.update(r, y_meas, dt, setpoint_next_nm=traj.r(t + dt))
         else:
             v = controller.update(r, y_meas, dt)
 

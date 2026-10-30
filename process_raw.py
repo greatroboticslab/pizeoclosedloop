@@ -151,6 +151,25 @@ def get_downloads_dir() -> str:
 # -----------------------------
 # Core processing logic -hello
 # -----------------------------
+def phase_fraction(phase_raw) -> float | None:
+    """Fractional fringe from uMD's phase word (PhaseValue / 256).
+
+    Same validity rule as MainForm.vb: bits 9–14 set on a non-negative word
+    means the interpolation is invalid. A valid word resolves the fringe into
+    256 steps, about 1.2 nm each. None means "no new fraction" so the caller
+    can keep the last valid one instead of snapping back to a whole fringe.
+
+    The firmware prints a 16-bit field. A word above 32767 is the unsigned
+    form of a negative value, and a negative word is valid (both beams present).
+    """
+    word = int(phase_raw)
+    if 0 <= word <= 0xFFFF and word & 0x8000:
+        word -= 0x10000
+    if (word & 0x7E00) == 0 or word < 0:
+        return word / 256.0
+    return None
+
+
 def raw_to_nm(D, wavelength=632.991372, phase=0.0, correction=0.0):
     return (D - phase) * (wavelength / 2.0) - correction
 
